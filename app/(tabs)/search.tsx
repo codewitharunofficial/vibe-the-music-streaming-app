@@ -103,8 +103,10 @@ const SearchScreen = () => {
                 style={styles.songImage}
               />
               <View style={styles.songDetails}>
-                <Text style={styles.songTitle}>{item.title}</Text>
-                <Text style={styles.songArtist}>{item.author}</Text>
+                <Text style={styles.songTitle}>{item.title?.slice(0, 30)}</Text>
+                <Text style={styles.songArtist}>
+                  {item.author?.slice(0, 30)}
+                </Text>
               </View>
             </TouchableOpacity>
           )}

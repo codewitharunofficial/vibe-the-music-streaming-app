@@ -29,7 +29,6 @@ import {
   showPlaybackNotification,
   setupNotificationHandler,
   configureNotificationChannel,
-  dismissPlaybackNotification,
 } from "@/components/Notification";
 
 const { width, height } = Dimensions.get("window");
@@ -169,6 +168,8 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
   );
 };
 
+import TrackPlayer, { Capability, RepeatMode, Event, usePlaybackState, useProgress } from 'react-native-track-player';
+
 const NowPlayingScreen = ({
   song,
   isVisible,
@@ -177,41 +178,53 @@ const NowPlayingScreen = ({
   url,
 }) => {
   const { isPlaying, setIsPlaying } = useSong();
-  const { currentSong, setCurrentSong, setSongUrl, setIsSongLoading } =
-    useSong();
-  const { repeat, setRepeat, sound, setSound, currentQueue } = usePlayer();
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(1);
+  const { currentSong, setCurrentSong, setSongUrl, setIsSongLoading } = useSong();
+  const { repeat, setRepeat, currentQueue } = usePlayer();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showQueue, setShowQueue] = useState(false);
+  const playbackState = usePlaybackState();
+  const { position, duration } = useProgress();
 
+  // Setup TrackPlayer on component mount
   useEffect(() => {
-    const setupNotifications = async () => {
-      await configureNotificationChannel();
-      const permissionGranted = await requestNotificationPermission();
-      if (permissionGranted) {
-        setupNotificationHandler(
-          sound,
-          currentQueue,
-          currentIndex,
-          setCurrentIndex,
-          setIsPlaying
-        );
-      } else {
-        console.log("Notification permissions not granted");
+    const setupPlayer = async () => {
+      try {
+        await TrackPlayer.setupPlayer();
+        await TrackPlayer.updateOptions({
+          capabilities: [
+            Capability.Play,
+            Capability.Pause,
+            Capability.SkipToNext,
+            Capability.SkipToPrevious,
+          ],
+          compactCapabilities: [
+            Capability.Play,
+            Capability.Pause,
+            Capability.SkipToNext,
+            Capability.SkipToPrevious,
+          ],
+          notificationCapabilities: [
+            Capability.Play,
+            Capability.Pause,
+            Capability.SkipToNext,
+            Capability.SkipToPrevious,
+          ],
+          icon: require('./assets/images/icon.png'), // Ensure this path points to a valid image in your assets
+        });
+        console.log("TrackPlayer setup complete");
+      } catch (error) {
+        console.error("Error setting up TrackPlayer:", error);
       }
     };
 
-    setupNotifications();
+    setupPlayer();
 
     return () => {
-      if (!isPlaying && !currentSong) {
-        console.log("Unmounting NowPlayingScreen, dismissing notification");
-        dismissPlaybackNotification();
-      }
+      TrackPlayer.reset();
     };
-  }, [sound, isPlaying, currentSong]);
+  }, []);
 
+  // Update currentIndex based on currentSong and currentQueue
   useEffect(() => {
     if (currentQueue?.length > 0 && currentSong) {
       const index = currentQueue.findIndex(
@@ -221,57 +234,29 @@ const NowPlayingScreen = ({
     }
   }, [currentQueue, currentSong]);
 
+  // Load and play audio when url or currentSong changes
   useEffect(() => {
-    if (url) {
+    if (url && currentSong) {
       loadAndPlayAudio();
     }
-    return () => unloadAudio();
-  }, [url]);
-
-  useEffect(() => {
-    if (currentSong && isVisible) {
-      console.log("Updating notification with song:", currentSong);
-      showPlaybackNotification(
-        {
-          ...currentSong,
-          thumbnail: currentSong.thumbnail?.url || currentSong.thumbnail,
-        },
-        isPlaying
-      );
-    }
-  }, [currentSong, isPlaying, isVisible]);
+  }, [url, currentSong]);
 
   const loadAndPlayAudio = async () => {
-    if (!url) return;
+    if (!url || !currentSong) return;
 
     try {
       setIsSongLoading(true);
-      await Audio.setAudioModeAsync({
-        staysActiveInBackground: true,
-        playThroughEarpieceAndroid: false,
+      await TrackPlayer.reset();
+      await TrackPlayer.add({
+        id: currentSong.videoId,
+        url: url,
+        title: currentSong.title || "Now Playing",
+        artist: currentSong.author || "Unknown Artist",
+        artwork: currentSong.thumbnail?.url || currentSong.thumbnail || "https://via.placeholder.com/150",
       });
-
-      if (sound) {
-        await sound.unloadAsync();
-      }
-
-      const { sound: newSound, status } = await Audio.Sound.createAsync(
-        { uri: url },
-        { shouldPlay: true, isLooping: repeat }
-      );
-
-      setSound(newSound);
+      await TrackPlayer.play();
       setIsPlaying(true);
-      setDuration(status.durationMillis ? status.durationMillis / 1000 : 1);
-      newSound.setOnPlaybackStatusUpdate(updateProgress);
-
-      await showPlaybackNotification(
-        {
-          ...currentSong,
-          thumbnail: currentSong.thumbnail?.url || currentSong.thumbnail,
-        },
-        true
-      );
+      console.log("Track loaded and playing:", currentSong.title);
     } catch (error) {
       console.error("Error loading audio:", error);
     } finally {
@@ -279,97 +264,76 @@ const NowPlayingScreen = ({
     }
   };
 
-  const unloadAudio = async () => {
-    if (sound) {
-      await sound.unloadAsync();
-      setSound(null);
-      if (!isPlaying && !currentSong) {
-        console.log("Unloading audio, dismissing notification");
-        await dismissPlaybackNotification();
-      }
-    }
-  };
-
-  const updateProgress = (status) => {
-    if (status.isLoaded) {
-      setProgress(status.positionMillis / 1000);
-      if (status.didJustFinish && !repeat) {
-        playNext();
-      }
-    }
-  };
-
   const playPause = async () => {
-    if (sound) {
-      if (isPlaying) {
-        await sound.pauseAsync();
+    try {
+      if (playbackState === 'playing') {
+        await TrackPlayer.pause();
         setIsPlaying(false);
-        await showPlaybackNotification(
-          {
-            ...currentSong,
-            thumbnail: currentSong.thumbnail?.url || currentSong.thumbnail,
-          },
-          false
-        );
       } else {
-        await sound.playAsync();
+        await TrackPlayer.play();
         setIsPlaying(true);
-        await showPlaybackNotification(
-          {
-            ...currentSong,
-            thumbnail: currentSong.thumbnail?.url || currentSong.thumbnail,
-          },
-          true
-        );
       }
+    } catch (error) {
+      console.error("Error toggling play/pause:", error);
     }
   };
 
   const playNext = async () => {
-    if (currentIndex + 1 < currentQueue.length) {
-      playSong(
-        currentQueue[currentIndex + 1],
-        setIsSongLoading,
-        setCurrentSong,
-        setSongUrl
-      );
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      setIsPlaying(false);
-      setCurrentSong(null);
-      setSongUrl(null);
-      console.log("End of queue, dismissing notification");
-      await dismissPlaybackNotification();
+    try {
+      if (currentIndex + 1 < currentQueue.length) {
+        playSong(
+          currentQueue[currentIndex + 1],
+          setIsSongLoading,
+          setCurrentSong,
+          setSongUrl
+        );
+        setCurrentIndex(currentIndex + 1);
+      } else {
+        setIsPlaying(false);
+        setCurrentSong(null);
+        setSongUrl(null);
+        await TrackPlayer.reset();
+      }
+    } catch (error) {
+      console.error("Error playing next track:", error);
     }
   };
 
   const playPrev = async () => {
-    if (currentIndex > 0) {
-      playSong(
-        currentQueue[currentIndex - 1],
-        setIsSongLoading,
-        setCurrentSong,
-        setSongUrl
-      );
-      setCurrentIndex(currentIndex - 1);
+    try {
+      if (currentIndex > 0) {
+        playSong(
+          currentQueue[currentIndex - 1],
+          setIsSongLoading,
+          setCurrentSong,
+          setSongUrl
+        );
+        setCurrentIndex(currentIndex - 1);
+      }
+    } catch (error) {
+      console.error("Error playing previous track:", error);
     }
   };
 
   const seekTo = async (value) => {
-    if (sound) {
-      await sound.setPositionAsync(value * 1000);
-      setProgress(value);
+    try {
+      await TrackPlayer.seekTo(value);
+    } catch (error) {
+      console.error("Error seeking:", error);
     }
   };
 
   const toggleRepeat = async () => {
-    setRepeat(!repeat);
-    if (sound) {
-      await sound.setIsLoopingAsync(!repeat);
+    try {
+      setRepeat(!repeat);
+      await TrackPlayer.setRepeatMode(repeat ? RepeatMode.Off : RepeatMode.Track);
+    } catch (error) {
+      console.error("Error toggling repeat:", error);
     }
   };
 
   const formatTime = (seconds) => {
+    if (!seconds || isNaN(seconds)) return "0:00";
     const min = Math.floor(seconds / 60);
     const sec = Math.floor(seconds % 60);
     return `${min}:${sec < 10 ? "0" : ""}${sec}`;
@@ -377,7 +341,6 @@ const NowPlayingScreen = ({
 
   if (!song) return null;
 
-  
   return (
     <BottomModal
       visible={isVisible}
@@ -392,23 +355,23 @@ const NowPlayingScreen = ({
         <Text style={styles.header}>Vibe - Now Playing</Text>
 
         <Image
-          source={{ uri: song.thumbnail }}
+          source={{ uri: song.thumbnail?.url || song.thumbnail }}
           style={styles.nowPlayingImage}
         />
         <Text style={styles.nowPlayingTitle}>{song.title?.slice(0, 30)}</Text>
         <Text style={styles.nowPlayingArtist}>{song.author?.slice(0, 30)}</Text>
 
         <View style={styles.sliderContainer}>
-          <Text style={styles.timeText}>{formatTime(progress)}</Text>
+          <Text style={styles.timeText}>{formatTime(position)}</Text>
           <Slider
             style={styles.slider}
             minimumValue={0}
-            maximumValue={duration}
-            value={progress}
+            maximumValue={duration || 1}
+            value={position}
             minimumTrackTintColor="#FFFFFF"
             maximumTrackTintColor="#888888"
-            onValueChange={(value) => setProgress(value)}
-            onSlidingComplete={seekTo}
+            onValueChange={(value) => seekTo(value)}
+            onSlidingComplete={(value) => seekTo(value)}
           />
           <Text style={styles.timeText}>{formatTime(duration)}</Text>
         </View>
@@ -429,7 +392,7 @@ const NowPlayingScreen = ({
           ) : (
             <TouchableOpacity onPress={playPause}>
               <Ionicons
-                name={isPlaying ? "pause" : "play"}
+                name={playbackState === 'playing' ? "pause" : "play"}
                 size={32}
                 color="white"
               />
@@ -439,7 +402,7 @@ const NowPlayingScreen = ({
             <Ionicons name="play-forward" size={32} color="white" />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setShowQueue(true)}>
-            <MaterialCommunityIcons name="menu" size={32} color={"#fff"} />
+            <MaterialCommunityIcons name="menu" size={32} color="#fff" />
           </TouchableOpacity>
         </View>
       </ModalContent>
@@ -451,6 +414,7 @@ const NowPlayingScreen = ({
     </BottomModal>
   );
 };
+
 
 const MiniPlayer = ({
   song,

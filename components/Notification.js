@@ -1,12 +1,5 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
-import * as FileSystem from "expo-file-system";
-import * as ImageManipulator from "expo-image-manipulator";
-
-// Store the current notification ID and playback state
-let currentNotificationId = null;
-let currentSongData = null;
-let isPlayingSong = false;
 
 // Configure notification handler
 Notifications.setNotificationHandler({
@@ -49,139 +42,120 @@ export const requestNotificationPermission = async () => {
   }
 };
 
-// Download and resize image for notification
-const prepareImageForNotification = async (url) => {
+// Create notification channel for Android
+export const configureNotificationChannel = async () => {
   try {
-    const fileUri = `${FileSystem.cacheDirectory}thumbnail.jpg`;
-    const { uri } = await FileSystem.downloadAsync(url, fileUri);
-    console.log("Downloaded thumbnail to:", uri);
-
-    // Resize image to 96x96 (recommended for Android notifications)
-    const manipulatedImage = await ImageManipulator.manipulateAsync(
-      uri,
-      [{ resize: { width: 96, height: 96 } }],
-      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-    );
-
-    console.log("Resized thumbnail to:", manipulatedImage.uri);
-    return manipulatedImage.uri;
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("playback", {
+        name: "Music Playback",
+        importance: Notifications.AndroidImportance.HIGH,
+        showBadge: false,
+        enableLights: true,
+        lightColor: "#1DB954",
+        lockscreenVisibility:
+          Notifications.AndroidNotificationVisibility.PUBLIC,
+        enableVibrate: false,
+        bypassDnd: true, // Allow notification to bypass Do Not Disturb
+      });
+      console.log("Notification channel configured successfully");
+    }
   } catch (error) {
-    console.error("Error preparing thumbnail:", error);
-    return null;
+    console.error("Error configuring notification channel:", error);
+    throw error;
   }
 };
 
-// Show or update playback notification
+// Show playback notification
 export const showPlaybackNotification = async (song, isPlaying) => {
   try {
-    // Update playback state
-    isPlayingSong = isPlaying;
-    currentSongData = song;
+    // Ensure channel is created before displaying notification
+    await configureNotificationChannel();
 
-    if (!song) {
-      console.log("No song provided, skipping notification");
-      return;
-    }
+    // Log the thumbnail URL to debug
+    console.log("Thumbnail URL:", song?.thumbnail);
 
-    console.log("Showing/updating notification for song:", song);
+    // Validate thumbnail URL (fallback to placeholder text if invalid)
+    const thumbnailUrl =
+      song?.thumbnail &&
+      typeof song.thumbnail === "string" &&
+      song.thumbnail.startsWith("http")
+        ? song.thumbnail
+        : null;
 
-    // Handle thumbnail
-    let localThumbnailUri = null;
-    if (song?.thumbnail) {
-      localThumbnailUri = await prepareImageForNotification(song.thumbnail);
-    }
+    // Ensure title and body are non-null
+    const title = song?.title || "Now Playing";
+    const artist = song?.author || "Unknown Artist";
 
-    const notificationContent = {
+    // Create a notification body with control emojis (fallback for devices that don't support bigPicture)
+    const body = `${artist}`;
+
+    // Log notification details before displaying
+    console.log(
+      "Displaying notification with title:",
+      title,
+      "body:",
+      body,
+      "isPlaying:",
+      isPlaying
+    );
+
+    await Notifications.dismissAllNotificationsAsync();
+
+    await Notifications.scheduleNotificationAsync({
       content: {
-        title: song?.title || "Now Playing",
-        body: song?.author || "Unknown Artist",
+        title: title,
+        body: body,
         sound: false,
-        data: { songId: song?.videoId },
+        data: { songId: song?.videoId || "" },
         sticky: true,
         priority: Notifications.AndroidNotificationPriority.HIGH,
         android: {
           channelId: "playback",
           sound: false,
           vibrate: false,
-          smallIcon: "ic_notification",
-          largeIcon: localThumbnailUri || null,
+          smallIcon: "notification_icon", // Use Expo's default notification icon
+          largeIcon: thumbnailUrl || null, // Use the remote URL directly
           color: "#1DB954",
-          autoCancel: false,
-          ongoing: true,
-          style: {
-            type: "media", // Use MediaStyle for music playback
-            title: song?.title || "Now Playing",
-            body: song?.author || "Unknown Artist",
-            largeIcon: localThumbnailUri || null,
-            actions: [
-              {
-                identifier: "PREV",
-                buttonTitle: "Previous",
-                requiresAuthentication: false,
-              },
-              {
-                identifier: "PAUSE",
-                buttonTitle: isPlaying ? "Pause" : "Play",
-                requiresAuthentication: false,
-              },
-              {
-                identifier: "NEXT",
-                buttonTitle: "Next",
-                requiresAuthentication: false,
-              },
-            ],
-          },
+          autoCancel: false, // Prevent user dismissal
+          ongoing: true, // Makes it non-dismissible
+          style: thumbnailUrl
+            ? {
+                type: "bigPicture",
+                picture: thumbnailUrl, // Display thumbnail in the expanded notification body
+                largeIcon: thumbnailUrl, // Keep largeIcon for the collapsed state
+              }
+            : undefined,
+          actions: [
+            {
+              identifier: "PREV",
+              buttonTitle: "Previous",
+              requiresAuthentication: false,
+            },
+            {
+              identifier: "PAUSE",
+              buttonTitle: isPlaying ? "Pause" : "Play",
+              requiresAuthentication: false,
+            },
+            {
+              identifier: "NEXT",
+              buttonTitle: "Next",
+              requiresAuthentication: false,
+            },
+          ],
         },
         ios: {
-          attachments: song?.thumbnail
-            ? [{ url: song.thumbnail, identifier: "thumbnail" }]
+          attachments: thumbnailUrl
+            ? [{ url: thumbnailUrl, identifier: "thumbnail" }]
             : [],
         },
       },
       trigger: null,
-    };
-
-    console.log("Notification content:", notificationContent);
-
-    if (currentNotificationId) {
-      await Notifications.dismissNotificationAsync(currentNotificationId);
-    }
-
-    const notificationId = await Notifications.scheduleNotificationAsync(
-      notificationContent
-    );
-    currentNotificationId = notificationId;
-    console.log("Notification ID:", notificationId);
+    });
+    console.log("Notification displayed successfully");
   } catch (error) {
     console.error("Error showing notification:", error);
   }
 };
-
-// Dismiss the notification
-export const dismissPlaybackNotification = async () => {
-  try {
-    if (currentNotificationId) {
-      await Notifications.dismissNotificationAsync(currentNotificationId);
-      currentNotificationId = null;
-      currentSongData = null;
-      isPlayingSong = false;
-      console.log("Notification dismissed");
-    }
-  } catch (error) {
-    console.error("Error dismissing notification:", error);
-  }
-};
-
-// Monitor notification dismissal to re-schedule if song is still playing
-Notifications.addNotificationResponseReceivedListener(async (response) => {
-  if (!currentNotificationId) return; // Notification already dismissed
-
-  const dismissed = !response.actionIdentifier; // No action means user dismissed the notification
-  if (dismissed && (isPlayingSong || currentSongData)) {
-    console.log("Notification dismissed by user, re-scheduling...");
-    await showPlaybackNotification(currentSongData, isPlayingSong);
-  }
-});
 
 // Handle notification actions
 export const setupNotificationHandler = (
@@ -240,21 +214,4 @@ export const setupNotificationHandler = (
       console.error("Error handling notification action:", error);
     }
   });
-};
-
-// Create notification channel for Android
-export const configureNotificationChannel = async () => {
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("playback", {
-      name: "Music Playback",
-      importance: Notifications.AndroidImportance.HIGH,
-      showBadge: false,
-      enableLights: true,
-      lightColor: "#1DB954",
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-      enableVibrate: false,
-      bypassDnd: true,
-    });
-    console.log("Notification channel configured");
-  }
 };

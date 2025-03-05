@@ -15,7 +15,7 @@ import { usePlayer } from "@/context/PlayerContext";
 import { router } from "expo-router";
 import { saveToRecentlyPlayed } from "@/constants/cachedData";
 import Loader from "@/components/Loader";
-import { Audio } from "expo-av";
+import { Audio } from "expo-av"; 
 
 export default function Home() {
   const [home, setHome] = useState({});
