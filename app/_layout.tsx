@@ -1,16 +1,17 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import "react-native-reanimated";
 
 import { SongProvider } from "@/context/SongContext";
 import { PlayerProvider } from "@/context/PlayerContext";
 import RootLayoutNav from "./RootLayoutNav"; // Move navigation logic to a separate file
+import { PlaylistProvider } from "@/context/Playlist";
+import { TrackPlayerServiceProvider } from "@/context/TrackPlayerConext";
+import { UserProvider } from "@/context/User";
 
-export {
-  ErrorBoundary,
-} from "expo-router";
+export { ErrorBoundary } from "expo-router";
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
@@ -25,25 +26,43 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
+  const [isAppReady, setIsAppReady] = useState(false);
+
   useEffect(() => {
     if (error) throw error;
   }, [error]);
 
   useEffect(() => {
-    if (loaded) {
+    async function prepare() {
+      await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait for 3 seconds
+      setIsAppReady(true);
+    }
+
+    prepare();
+  }, []);
+
+  useEffect(() => {
+    if (loaded && isAppReady) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded, isAppReady]);
 
-  if (!loaded) {
+  // Block rendering until fonts are loaded AND timeout is complete
+  if (!loaded || !isAppReady) {
     return null;
   }
 
   return (
-    <PlayerProvider>
-      <SongProvider>
-        <RootLayoutNav />
-      </SongProvider>
-    </PlayerProvider>
+    <UserProvider>
+      <TrackPlayerServiceProvider>
+        <PlaylistProvider>
+          <PlayerProvider>
+            <SongProvider>
+              <RootLayoutNav />
+            </SongProvider>
+          </PlayerProvider>
+        </PlaylistProvider>
+      </TrackPlayerServiceProvider>
+    </UserProvider>
   );
 }

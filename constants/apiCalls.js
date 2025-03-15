@@ -25,12 +25,17 @@ export const fetchHome = async (setIsLoading) => {
   }
 };
 
-export const playASongs = async (id) => {
+export const playASongs = async (id, email, song) => {
   try {
     console.log("Getting song with ID: ", id);
 
-    const { data } = await axios.get(
-      `https://vibe-music-eight.vercel.app/api/song?id=${id}`
+    const { data } = await axios.post(
+      `${process.env.EXPO_PUBLIC_API}/api/song`,
+      {
+        id: id,
+        email: email,
+        song: song,
+      }
     );
     if (data) {
       console.log(data);
@@ -48,7 +53,7 @@ export const getTrendings = async () => {
     url: "https://yt-api.p.rapidapi.com/trending",
     params: { geo: "IN", type: "music" },
     headers: {
-      "x-rapidapi-key": "b1c26628e0msh3fbbf13ea24b4abp184561jsna2ebae86e910",
+      "x-rapidapi-key": process.env.EXPO_PUBLIC_API_KEY_1,
       "x-rapidapi-host": "yt-api.p.rapidapi.com",
     },
   };
@@ -95,21 +100,114 @@ export const getPlaylistSongs = async (id) => {
 export const getAlbumSongs = async (id) => {
   const options = {
     method: "GET",
-    url: "https://youtube-music-api-yt.p.rapidapi.com/get-album",
+    url: "https://youtube-music-api3.p.rapidapi.com/getAlbum",
     params: {
-      videoId: id,
+      id: id,
     },
     headers: {
       "x-rapidapi-key": process.env.EXPO_PUBLIC_API_KEY_1,
-      "x-rapidapi-host": "youtube-music-api-yt.p.rapidapi.com",
+      "x-rapidapi-host": "youtube-music-api3.p.rapidapi.com",
     },
   };
 
   try {
     const { data } = await axios.request(options);
+    await AsyncStorage.setItem(`album_${id}`, JSON.stringify(data));
     console.log(data);
     return data;
   } catch (error) {
     console.error(error);
+  }
+};
+
+export const handleLiked = async (email, song) => {
+  try {
+    const { data } = await axios.post(
+      `${process.env.EXPO_PUBLIC_API}/api/favourites`,
+      { email: email, song: song }
+    );
+    if (data.success) {
+      console.log(data);
+      return data;
+    } else {
+      console.log(data.message);
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const handleRecentlyPlayed = async (email, song) => {
+  try {
+    const { data } = await axios.post(
+      `${process.env.EXPO_PUBLIC_API}/api/recently-played`,
+      { email: email, song: song }
+    );
+    if (data.success) {
+      console.log(data);
+      // return data;
+    } else {
+      console.log(data.message);
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const retrieveRecentlyPlayed = async (email) => {
+  try {
+    const { data } = await axios.get(
+      `${process.env.EXPO_PUBLIC_API}/api/get-recents?email=${email}`
+    );
+    if (data.success) {
+      return data.recently_played;
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const fetchUserPlaylists = async (email, setPlaylists) => {
+  try {
+    const { data } = await axios.get(
+      `${process.env.EXPO_PUBLIC_API}/api/playlists?email=${email}`
+    );
+    if (data.success) {
+      console.log(data);
+      setPlaylists(data.playlists);
+      // return data.playlists;
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const createNewPlaylist = async (email, name, setPlaylists) => {
+  try {
+    const { data } = await axios.post(
+      `${process.env.EXPO_PUBLIC_API}/api/playlist/create`,
+      { playlistName: name, email: email }
+    );
+    if (data.success) {
+      console.log(data);
+      setPlaylists(data.playlists);
+      // return data.playlists;
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const handleAddToPlaylist = async (email, name, song) => {
+  try {
+    const { data } = await axios.post(
+      `${process.env.EXPO_PUBLIC_API}/api/playlist/add-song`,
+      { playlistName: name, email: email, song: song }
+    );
+    if (data.success) {
+      console.log(data);
+    }
+  } catch (error) {
+    console.log(error);
   }
 };

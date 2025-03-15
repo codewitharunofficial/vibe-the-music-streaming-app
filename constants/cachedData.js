@@ -32,3 +32,33 @@ export const getRecentlyPlayed = async (setIsLoading, setSongs) => {
     setIsLoading(false);
   }
 };
+
+export const saveToFavourites = async (favourites) => {
+  try {
+    await AsyncStorage.setItem("favourites", JSON.stringify(favourites));
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const getFavourites = async () => {
+  try {
+    const list = JSON.parse(await AsyncStorage.getItem("favourites")) || [];
+    if (list) return list;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const checkIfLoggedIn = async () => {
+  try {
+    const storedUser = await AsyncStorage.getItem("userInfo");
+    if (storedUser) {
+      return true;
+    } else {
+      return false;
+    }
+  } catch (error) {
+    console.error("Error Fetching user:", error);
+  }
+};

@@ -23,8 +23,8 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
-        tabBarStyle: { flex: 0.1, padding: 5, alignItems: "center" },
-        tabBarItemStyle: { padding: 5 },
+        tabBarStyle: { flex: 0.1, alignItems: "center" },
+        tabBarItemStyle: { padding: 15, backgroundColor: "#1A1A2E", },
       }}
     >
       <Tabs.Screen
@@ -39,10 +39,10 @@ export default function TabLayout() {
                   <FontAwesome
                     name="music"
                     size={25}
-                    color={Colors[colorScheme ?? "light"].text}
+                    color='#fff'
                     style={{
                       marginLeft: 15,
-                      marginRight: 10,
+                      marginRight: 5,
                       opacity: pressed ? 0.5 : 1,
                     }}
                   />
@@ -51,6 +51,9 @@ export default function TabLayout() {
             </Link>
           ),
           headerTitle: "Vibe",
+          headerStyle: { backgroundColor: "#1A1A2E" },
+          headerTitleStyle: {color: '#fff'}
+          // tabBarStyle: { backgroundColor: "#1A1A2E", flex: 0.1 },
         }}
       />
       <Tabs.Screen
@@ -61,15 +64,22 @@ export default function TabLayout() {
             <Ionicons name="search" color={color} size={size} />
           ),
           headerTitle: "Search - Vibe",
+          headerStyle: { backgroundColor: "#1A1A2E" },
+          headerTitleStyle: {color: '#fff'}
+          // tabBarStyle: { backgroundColor: "#1A1A2E", flex: 0.1 },
+
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="profile"
         options={{
-          title: "Settings",
+          title: "Profile",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings" color={color} size={size} />
+            <Ionicons name="person" color={color} size={size} />
           ),
+          headerStyle: { backgroundColor: "#1A1A2E" },
+          headerTitleStyle: {color: '#fff'}
+          // tabBarStyle: { backgroundColor: "#1A1A2E", flex: 0.1 },
         }}
       />
     </Tabs>

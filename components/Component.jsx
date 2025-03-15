@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -8,41 +8,50 @@ import {
   StyleSheet,
   Dimensions,
   ActivityIndicator,
-  Modal,
   Animated,
+  Alert,
+  Easing,
 } from "react-native";
 import {
   Ionicons,
   MaterialIcons,
   Feather,
   MaterialCommunityIcons,
+  FontAwesome5,
+  Entypo,
+  AntDesign,
 } from "@expo/vector-icons";
 import { BottomModal, ModalContent, SlideAnimation } from "react-native-modals";
 // import { Audio } from "expo-av";
 import Slider from "@react-native-community/slider";
 import { useSong } from "@/context/SongContext";
 import { usePlayer } from "@/context/PlayerContext";
-import { playSong } from "@/constants/player";
-import { Audio } from "expo-av";
-import {
-  requestNotificationPermission,
-  showPlaybackNotification,
-  setupNotificationHandler,
-  configureNotificationChannel,
-} from "@/components/Notification";
+import { playSong, shareSong } from "@/constants/player";
+// import { Audio } from "expo-av";
 
 const { width, height } = Dimensions.get("window");
 
 // SongCard Component
-const SongCard = ({ song, onPlayPress, onLikePress, isPlaying, section }) => {
+const SongCard = ({
+  song,
+  onPlayPress,
+  onLikePress,
+  isPlaying,
+  section,
+  index,
+}) => {
   return (
     <TouchableOpacity
-      onPress={() => onPlayPress(section, song)}
+      onPress={() => onPlayPress(section, song, index)}
       style={styles.cardContainer}
     >
       <Image source={{ uri: song.thumbnail }} style={styles.image} />
-      <Text style={styles.title}>{song.title?.slice(0, 30)}</Text>
-      <Text style={styles.artist}>{song.author?.slice(0, 30)}</Text>
+      <Text numberOfLines={1} style={styles.title}>
+        {song.title?.slice(0, 30)}
+      </Text>
+      <Text numberOfLines={1} style={[styles.artist, { color: "#fff" }]}>
+        {song.author?.slice(0, 30)}
+      </Text>
       <View style={styles.iconContainer}></View>
     </TouchableOpacity>
   );
@@ -63,13 +72,13 @@ const SongsList = ({
       <View style={styles.container}>
         <FlatList
           data={songs}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <SongCard
               song={item}
               onPlayPress={onPlayPress}
               onLikePress={onLikePress}
               section={section}
-              // isPlaying={item.videoId === playingSongId}
+              index={index}
             />
           )}
           keyExtractor={(item, index) => index}
@@ -113,7 +122,7 @@ const MusicSections = ({ data, onPlayPress, onLikePress }) => {
     <FlatList
       data={Object.entries(data)}
       keyExtractor={([key]) => key.toString()}
-      renderItem={({ item }) => {
+      renderItem={({ item, index }) => {
         const [key, songs] = item;
         return key !== "charts" &&
           key !== "moods_and_moments" &&
@@ -123,7 +132,13 @@ const MusicSections = ({ data, onPlayPress, onLikePress }) => {
             songs={songs}
             onPlayPress={onPlayPress}
             onLikePress={onLikePress}
-            section={key}
+            section={
+              index !== 1
+                ? key
+                : index === 1 && key.includes("album")
+                ? "album"
+                : "playlist"
+            }
           />
         ) : null;
       }}
@@ -132,43 +147,161 @@ const MusicSections = ({ data, onPlayPress, onLikePress }) => {
 };
 
 const QueueModal = ({ isVisible, onClose, queue }) => {
-  const { setIsSongLoading, setCurrentSong, setSongUrl } = useSong();
+  const { setIsSongLoading, currentSong, setCurrentSong, setSongUrl } =
+    useSong();
+
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const close = () => setModalVisible(false);
+
+  const { userInfo } = useUser();
+  const { currentIndex, setCurrentIndex } = usePlayer();
+
+  function moveSong(arr, fromIndex, toIndex) {
+    if (
+      fromIndex < 0 ||
+      fromIndex >= arr.length ||
+      toIndex < 0 ||
+      toIndex >= arr.length
+    ) {
+      console.error("Invalid indices");
+      return arr;
+    }
+
+    const item = arr.splice(fromIndex, 1)[0];
+    arr.splice(toIndex, 0, item);
+    console.log(`The Song HAs been moved from ${fromIndex} to ${toIndex}`);
+    return arr;
+  }
+
+  const addToRNTPQueue = async (song) => {
+    try {
+      console.log("Fetching next track:", song.title);
+
+      const { data } = await axios.post(
+        `${process.env.EXPO_PUBLIC_API}/api/song`,
+        {
+          id: song.videoId,
+          song: song,
+          email: userInfo?.email,
+        }
+      );
+
+      if (data) {
+        console.log(
+          data.song.adaptiveFormats[data.song.adaptiveFormats.length - 1]?.url
+        );
+        const newTrack = {
+          id: song.videoId,
+          url: data.song.adaptiveFormats[data.song.adaptiveFormats.length - 1]
+            ?.url,
+          title: song.title,
+          artist: song.author,
+          artwork:
+            song.thumbnail?.url ||
+            song.thumbnail ||
+            "https://via.placeholder.com/150",
+          thumbnail: song.thumbnail?.url || song.thumbnail,
+        };
+
+        console.log("Adding next track to queue:", newTrack.title);
+        const currentTrackIndex = await TrackPlayer.getActiveTrackIndex();
+        await TrackPlayer.add(newTrack, currentTrackIndex + 1);
+      }
+    } catch (error) {
+      console.error("Error fetching next track:", error);
+    }
+  };
 
   return (
-    <Modal transparent visible={isVisible} animationType="slide">
-      <TouchableOpacity
-        style={styles.overlay}
-        activeOpacity={1}
-        onPress={() => onClose(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.queueHeader}>
-            <Text style={styles.title}>Queue</Text>
-          </View>
+    <BottomModal
+      visible={isVisible}
+      style={{ width: width, height: height * 0.5 }}
+      swipeDirection={["down"]}
+      onSwipeRelease={(event) => {
+        console.log(event);
+        if (event.layout.y >= 700) {
+          onClose();
+        }
+      }}
+    >
+      <ModalContent style={styles.modalContainer}>
+        <View style={styles.queueHeader}>
+          <Text style={styles.title}>Queue</Text>
+        </View>
 
-          <FlatList
-            data={queue}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item }) => (
+        <FlatList
+          data={queue}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={({ item, index }) => (
+            <TouchableOpacity
+              onPress={() => {
+                playSong(
+                  item,
+                  setIsSongLoading,
+                  setCurrentSong,
+                  setSongUrl,
+                  userInfo?.email
+                );
+              }}
+              style={styles.songItem}
+            >
+              <View style={{ flexDirection: "column" }}>
+                <Text style={styles.songTitle}>{item.title?.slice(0, 20)}</Text>
+                <Text style={styles.artist}>{item.author?.slice(0, 20)}</Text>
+              </View>
+              {item?.videoId === currentSong.videoId && (
+                <MaterialIcons
+                  name="equalizer"
+                  size={24}
+                  color={"#fff"}
+                  style={{ position: "absolute", top: 20, right: 80 }}
+                />
+              )}
               <TouchableOpacity
                 onPress={() => {
-                  playSong(item, setIsSongLoading, setCurrentSong, setSongUrl);
+                  setModalVisible(true);
+                  setCurrentIndex(index);
+                  console.log("Selected Song: ", item);
                 }}
-                style={styles.songItem}
+                style={{ position: "absolute", top: 20, right: 10 }}
               >
-                <Text style={styles.songTitle}>{item.title?.slice(0, 30)}</Text>
-                <Text style={styles.artist}>{item.author?.slice(0, 30)}</Text>
+                <Entypo name="dots-three-vertical" size={24} color="#fff" />
               </TouchableOpacity>
-            )}
-            contentContainerStyle={{ paddingBottom: 20 }}
-          />
-        </View>
-      </TouchableOpacity>
-    </Modal>
+            </TouchableOpacity>
+          )}
+          contentContainerStyle={{ paddingBottom: 20 }}
+        />
+      </ModalContent>
+      <SongOptionsModal
+        isVisible={modalVisible}
+        onClose={close}
+        song={currentSong}
+        moveSong={moveSong}
+        handleQueueSong={addToRNTPQueue}
+      />
+    </BottomModal>
   );
 };
 
-import TrackPlayer, { Capability, RepeatMode, Event, usePlaybackState, useProgress } from 'react-native-track-player';
+import TrackPlayer, {
+  RepeatMode,
+  Event,
+  usePlaybackState,
+  useProgress,
+  State,
+} from "react-native-track-player";
+import axios from "axios";
+import {
+  getFavourites,
+  saveToFavourites,
+  saveToRecentlyPlayed,
+} from "@/constants/cachedData";
+import { useUser } from "@/context/User";
+import { handleLiked, handleRecentlyPlayed } from "@/constants/apiCalls";
+import SongOptionsModal from "./OptionsOnNowPlaying";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Share } from "react-native";
 
 const NowPlayingScreen = ({
   song,
@@ -178,68 +311,122 @@ const NowPlayingScreen = ({
   url,
 }) => {
   const { isPlaying, setIsPlaying } = useSong();
-  const { currentSong, setCurrentSong, setSongUrl, setIsSongLoading } = useSong();
+  const { currentSong, setCurrentSong, setSongUrl, setIsSongLoading } =
+    useSong();
   const { repeat, setRepeat, currentQueue } = usePlayer();
+  const { userInfo, setUserInfo } = useUser();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showQueue, setShowQueue] = useState(false);
   const playbackState = usePlaybackState();
   const { position, duration } = useProgress();
+  // const isInitialLoad = useRef(true);
 
-  // Setup TrackPlayer on component mount
+  // Handle PlaybackActiveTrackChanged
   useEffect(() => {
-    const setupPlayer = async () => {
-      try {
-        await TrackPlayer.setupPlayer();
-        await TrackPlayer.updateOptions({
-          capabilities: [
-            Capability.Play,
-            Capability.Pause,
-            Capability.SkipToNext,
-            Capability.SkipToPrevious,
-          ],
-          compactCapabilities: [
-            Capability.Play,
-            Capability.Pause,
-            Capability.SkipToNext,
-            Capability.SkipToPrevious,
-          ],
-          notificationCapabilities: [
-            Capability.Play,
-            Capability.Pause,
-            Capability.SkipToNext,
-            Capability.SkipToPrevious,
-          ],
-          icon: require('./assets/images/icon.png'), // Ensure this path points to a valid image in your assets
-        });
-        console.log("TrackPlayer setup complete");
-      } catch (error) {
-        console.error("Error setting up TrackPlayer:", error);
+    const handleTrackChanged = async (data) => {
+      console.log("PlaybackActiveTrackChanged:", data);
+
+      if (!data.track) {
+        console.log("Skipping initial load event");
+        return;
+      }
+
+      const activeTrackIndex = await TrackPlayer.getActiveTrackIndex();
+      if (activeTrackIndex === undefined || !data.track) return;
+
+      const activeTrack = await TrackPlayer.getTrack(activeTrackIndex);
+      if (!activeTrack) return;
+
+      const newSongIndex = currentQueue.findIndex(
+        (s) => s.videoId === activeTrack.id
+      );
+
+      if (newSongIndex !== -1 && newSongIndex !== currentIndex) {
+        setCurrentIndex(newSongIndex);
+        setCurrentSong(currentQueue[newSongIndex]);
+        setSongUrl(activeTrack.url);
+        setIsPlaying(true);
+
+        // Update recently played
+        if (userInfo) {
+          await handleRecentlyPlayed(
+            userInfo.email,
+            currentQueue[newSongIndex]
+          );
+        } else {
+          await saveToRecentlyPlayed(currentQueue[newSongIndex]);
+        }
+
+        console.log("Switched to track:", currentQueue[newSongIndex].title);
+
+        // Prefetch next track
+        const nextIndex = newSongIndex + 1;
+        if (nextIndex < currentQueue.length) {
+          const nextTrack = currentQueue[nextIndex];
+          const queue = await TrackPlayer.getQueue();
+          const isNextInQueue = queue.some((t) => t.id === nextTrack.videoId);
+          if (!isNextInQueue) {
+            fetchAndQueueNextTrack(nextTrack, userInfo?.email);
+          }
+        }
+      } else {
+        console.log("Track ID not found in currentQueue:", activeTrack.id);
       }
     };
 
-    setupPlayer();
+    const subscription = TrackPlayer.addEventListener(
+      Event.PlaybackActiveTrackChanged,
+      handleTrackChanged
+    );
 
-    return () => {
-      TrackPlayer.reset();
+    return () => subscription.remove();
+  }, [currentQueue, currentIndex, userInfo]);
+
+  // Handle PlaybackQueueEnded
+  useEffect(() => {
+    const handleQueueEnded = async () => {
+      console.log("PlaybackQueueEnded");
+      const queue = await TrackPlayer.getQueue();
+      const activeTrackIndex = await TrackPlayer.getActiveTrackIndex();
+
+      if (repeat) {
+        await TrackPlayer.seekTo(0);
+        await TrackPlayer.play();
+      } else if (activeTrackIndex < queue.length - 1) {
+        console.log("RNTP will play the next track");
+      } else if (currentIndex + 1 < currentQueue.length) {
+        await loadMoreTracks(currentIndex + 1);
+        await TrackPlayer.skipToNext();
+      } else {
+        setIsPlaying(false);
+        setCurrentSong(null);
+        setSongUrl(null);
+        await TrackPlayer.reset();
+      }
     };
-  }, []);
 
-  // Update currentIndex based on currentSong and currentQueue
+    const subscription = TrackPlayer.addEventListener(
+      Event.PlaybackQueueEnded,
+      handleQueueEnded
+    );
+
+    return () => subscription.remove();
+  }, [currentIndex, currentQueue, repeat]);
+
+  // Sync currentIndex with currentSong
   useEffect(() => {
     if (currentQueue?.length > 0 && currentSong) {
       const index = currentQueue.findIndex(
         (s) => s.videoId === currentSong.videoId
       );
-      setCurrentIndex(index !== -1 ? index : 0);
+      if (index !== -1 && index !== currentIndex) setCurrentIndex(index);
     }
   }, [currentQueue, currentSong]);
 
-  // Load and play audio when url or currentSong changes
+  // Load and play audio when url changes
   useEffect(() => {
-    if (url && currentSong) {
-      loadAndPlayAudio();
-    }
-  }, [url, currentSong]);
+    if (url) loadAndPlayAudio();
+  }, [url]);
 
   const loadAndPlayAudio = async () => {
     if (!url || !currentSong) return;
@@ -247,16 +434,27 @@ const NowPlayingScreen = ({
     try {
       setIsSongLoading(true);
       await TrackPlayer.reset();
-      await TrackPlayer.add({
-        id: currentSong.videoId,
+
+      const track = {
+        id: currentSong.videoId || "unknown-id",
         url: url,
         title: currentSong.title || "Now Playing",
         artist: currentSong.author || "Unknown Artist",
-        artwork: currentSong.thumbnail?.url || currentSong.thumbnail || "https://via.placeholder.com/150",
-      });
+        artwork:
+          currentSong.thumbnail?.url ||
+          currentSong.thumbnail ||
+          "https://via.placeholder.com/150",
+      };
+
+      await TrackPlayer.add(track);
       await TrackPlayer.play();
       setIsPlaying(true);
-      console.log("Track loaded and playing:", currentSong.title);
+
+      // Prefetch next track
+      const nextIndex = currentIndex + 1;
+      if (nextIndex < currentQueue.length) {
+        fetchAndQueueNextTrack(currentQueue[nextIndex], userInfo?.email);
+      }
     } catch (error) {
       console.error("Error loading audio:", error);
     } finally {
@@ -264,80 +462,116 @@ const NowPlayingScreen = ({
     }
   };
 
-  const playPause = async () => {
+  const fetchAndQueueNextTrack = async (trackToQueue, email) => {
     try {
-      if (playbackState === 'playing') {
-        await TrackPlayer.pause();
-        setIsPlaying(false);
-      } else {
-        await TrackPlayer.play();
-        setIsPlaying(true);
+      const queue = await TrackPlayer.getQueue();
+      if (queue.some((t) => t.id === trackToQueue.videoId)) {
+        console.log("Next track already in queue:", trackToQueue.title);
+        return;
+      }
+
+      const { data } = await axios.post(
+        `${process.env.EXPO_PUBLIC_API}/api/song`,
+        { id: trackToQueue.videoId, song: trackToQueue, email }
+      );
+
+      if (data?.song) {
+        const newTrack = {
+          id: trackToQueue.videoId,
+          url: data.song.adaptiveFormats[data.song.adaptiveFormats.length - 1]
+            ?.url,
+          title: trackToQueue.title,
+          artist: trackToQueue.author,
+          artwork: trackToQueue.thumbnail?.url || trackToQueue.thumbnail,
+        };
+        await TrackPlayer.add(newTrack);
+        console.log("Queued next track:", newTrack.title);
       }
     } catch (error) {
-      console.error("Error toggling play/pause:", error);
+      console.error("Error prefetching next track:", error);
+    }
+  };
+
+  const loadMoreTracks = async (startIndex) => {
+    // Implement logic to load more tracks into RNTP queue if needed
+  };
+
+  const playPause = async () => {
+    if (playbackState.state === State.Playing) {
+      await TrackPlayer.pause();
+      setIsPlaying(false);
+    } else {
+      await TrackPlayer.play();
+      setIsPlaying(true);
     }
   };
 
   const playNext = async () => {
     try {
+      setIsSongLoading(true);
       if (currentIndex + 1 < currentQueue.length) {
-        playSong(
-          currentQueue[currentIndex + 1],
-          setIsSongLoading,
-          setCurrentSong,
-          setSongUrl
-        );
+        const nextTrack = currentQueue[currentIndex + 1];
+        await playSong(nextTrack, setIsSongLoading, setCurrentSong, setSongUrl);
         setCurrentIndex(currentIndex + 1);
+        setIsPlaying(true);
+        if (userInfo) {
+          await handleRecentlyPlayed(userInfo.email, nextTrack);
+        } else {
+          await saveToRecentlyPlayed(nextTrack);
+        }
       } else {
+        await TrackPlayer.reset();
         setIsPlaying(false);
         setCurrentSong(null);
         setSongUrl(null);
-        await TrackPlayer.reset();
       }
     } catch (error) {
-      console.error("Error playing next track:", error);
+      console.error("Error playing next:", error);
+    } finally {
+      setIsSongLoading(false);
     }
   };
 
   const playPrev = async () => {
     try {
+      setIsSongLoading(true);
       if (currentIndex > 0) {
-        playSong(
-          currentQueue[currentIndex - 1],
-          setIsSongLoading,
-          setCurrentSong,
-          setSongUrl
-        );
+        const prevTrack = currentQueue[currentIndex - 1];
+        const url = await playSong(prevTrack, setIsSongLoading, setCurrentSong);
+        setSongUrl(url);
         setCurrentIndex(currentIndex - 1);
+        setIsPlaying(true);
+        if (userInfo) {
+          await handleRecentlyPlayed(userInfo.email, prevTrack);
+        } else {
+          await saveToRecentlyPlayed(prevTrack);
+        }
       }
     } catch (error) {
-      console.error("Error playing previous track:", error);
+      console.error("Error playing previous:", error);
+    } finally {
+      setIsSongLoading(false);
     }
   };
 
   const seekTo = async (value) => {
-    try {
-      await TrackPlayer.seekTo(value);
-    } catch (error) {
-      console.error("Error seeking:", error);
-    }
+    await TrackPlayer.seekTo(value);
   };
 
   const toggleRepeat = async () => {
-    try {
-      setRepeat(!repeat);
-      await TrackPlayer.setRepeatMode(repeat ? RepeatMode.Off : RepeatMode.Track);
-    } catch (error) {
-      console.error("Error toggling repeat:", error);
-    }
+    const newRepeat = !repeat;
+    await TrackPlayer.setRepeatMode(
+      newRepeat ? RepeatMode.Queue : RepeatMode.Off
+    );
+    setRepeat(newRepeat);
   };
 
-  const formatTime = (seconds) => {
-    if (!seconds || isNaN(seconds)) return "0:00";
-    const min = Math.floor(seconds / 60);
-    const sec = Math.floor(seconds % 60);
-    return `${min}:${sec < 10 ? "0" : ""}${sec}`;
-  };
+  const formatTime = (seconds) =>
+    isNaN(seconds)
+      ? "0:00"
+      : `${Math.floor(seconds / 60)}:${String(
+          Math.floor(seconds % 60)
+        ).padStart(2, "0")}`;
 
   if (!song) return null;
 
@@ -348,19 +582,26 @@ const NowPlayingScreen = ({
       modalAnimation={new SlideAnimation({ slideFrom: "bottom" })}
       swipeDirection={["down"]}
       swipeThreshold={200}
-      onSwiping={(event) => !showQueue && setIsVisible(false)}
+      onSwipeRelease={(event) =>
+        !showQueue && event.layout.y >= 500 && setIsVisible(false)
+      }
       style={{ flex: 1 }}
     >
       <ModalContent style={styles.fullScreenContainer}>
+        <TouchableOpacity
+          style={{ margin: 10, alignItems: "center" }}
+          onPress={() => shareSong(currentSong)}
+        >
+          <AntDesign name="sharealt" size={24} color="#00ffcc" />
+          <Text style={{ color: "#fff" }}>Share</Text>
+        </TouchableOpacity>
         <Text style={styles.header}>Vibe - Now Playing</Text>
-
         <Image
           source={{ uri: song.thumbnail?.url || song.thumbnail }}
           style={styles.nowPlayingImage}
         />
         <Text style={styles.nowPlayingTitle}>{song.title?.slice(0, 30)}</Text>
         <Text style={styles.nowPlayingArtist}>{song.author?.slice(0, 30)}</Text>
-
         <View style={styles.sliderContainer}>
           <Text style={styles.timeText}>{formatTime(position)}</Text>
           <Slider
@@ -368,41 +609,41 @@ const NowPlayingScreen = ({
             minimumValue={0}
             maximumValue={duration || 1}
             value={position}
-            minimumTrackTintColor="#FFFFFF"
-            maximumTrackTintColor="#888888"
-            onValueChange={(value) => seekTo(value)}
-            onSlidingComplete={(value) => seekTo(value)}
+            minimumTrackTintColor="#FF9F1C"
+            maximumTrackTintColor="#FFFFFF"
+            tapToSeek={true}
+            onValueChange={seekTo}
+            onSlidingComplete={seekTo}
           />
           <Text style={styles.timeText}>{formatTime(duration)}</Text>
         </View>
-
         <View style={styles.nowPlayingControls}>
           <TouchableOpacity onPress={toggleRepeat}>
             {repeat ? (
-              <MaterialIcons name="repeat-one" size={32} color="white" />
+              <MaterialIcons name="repeat-one" size={32} color="#00ffcc" />
             ) : (
-              <MaterialCommunityIcons name="repeat" size={32} color="white" />
+              <MaterialCommunityIcons name="repeat" size={32} color="#00F5D4" />
             )}
           </TouchableOpacity>
           <TouchableOpacity onPress={playPrev}>
-            <Ionicons name="play-back" size={32} color="white" />
+            <Ionicons name="play-back" size={32} color="#00F5D4" />
           </TouchableOpacity>
-          {isSongLoading ? (
+          {isSongLoading || playbackState.state === State.Buffering ? (
             <ActivityIndicator size={32} color="white" />
           ) : (
             <TouchableOpacity onPress={playPause}>
               <Ionicons
-                name={playbackState === 'playing' ? "pause" : "play"}
+                name={playbackState.state === State.Playing ? "pause" : "play"}
                 size={32}
-                color="white"
+                color="#00F5D4"
               />
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={playNext}>
-            <Ionicons name="play-forward" size={32} color="white" />
+            <Ionicons name="play-forward" size={32} color="#00F5D4" />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setShowQueue(true)}>
-            <MaterialCommunityIcons name="menu" size={32} color="#fff" />
+            <MaterialCommunityIcons name="menu" size={32} color="#00F5D4" />
           </TouchableOpacity>
         </View>
       </ModalContent>
@@ -415,70 +656,230 @@ const NowPlayingScreen = ({
   );
 };
 
-
 const MiniPlayer = ({
   song,
   onOpen,
   isSongLoading,
   isPlaying,
   setIsPlaying,
+  route,
 }) => {
-  const { sound } = usePlayer();
+  const playbackState = usePlaybackState();
+  const { userInfo } = useUser();
+  const { currentSong } = useSong();
+  const [favorites, setFavorites] = useState([]);
+
+  const handleLike = async () => {
+    if (!userInfo) {
+      Alert.alert("Error!", "Please Sign In To Add Tracks to Favourites");
+    } else {
+      const fav = await getFavourites();
+      // console.log("favourites: ", fav);
+      fav.push(currentSong);
+      await saveToFavourites(fav);
+      setFavorites(fav);
+      const data = await handleLiked(userInfo?.email, currentSong);
+      await saveToFavourites(data.favourites);
+    }
+  };
+
+  const getFav = async () => {
+    if (userInfo) {
+      const data = await getFavourites();
+      setFavorites(data);
+    }
+  };
+
+  useEffect(() => {
+    getFav();
+  }, [userInfo, handleLike]);
 
   if (!song) return null;
 
   return (
     <TouchableOpacity
       onPress={() => onOpen(true)}
-      style={styles.miniPlayerContainer}
+      style={[
+        styles.miniPlayerContainer,
+        { bottom: route === "(tabs)" ? height * 0.098 : 1 },
+      ]}
     >
       <Image source={{ uri: song.thumbnail }} style={styles.miniPlayerImage} />
       <View style={styles.miniPlayerInfo}>
-        <Animated.Text style={styles.miniPlayerTitle}>
+        <Text numberOfLines={1} style={[styles.miniPlayerTitle]}>
           {song.title?.slice(0, 30)}
-        </Animated.Text>
-        <Text style={styles.miniPlayerArtist}>{song.author?.slice(0, 30)}</Text>
+        </Text>
+        <Text numberOfLines={1} style={styles.miniPlayerArtist}>
+          {song.author?.slice(0, 30)}
+        </Text>
       </View>
-      {!isSongLoading && !isPlaying ? (
+      <View
+        style={{ flexDirection: "row", gap: 10, marginLeft: 10, flex: 0.2 }}
+      >
         <TouchableOpacity
           style={styles.miniPlayerIcon}
-          onPress={() => {
-            sound.playAsync();
-            setIsPlaying(true);
+          onPress={async () => {
+            handleLike();
           }}
         >
-          <Ionicons name="play" size={24} color="white" />
+          {favorites.find((item) => item.videoId === currentSong.videoId) ? (
+            <Ionicons name="heart" size={24} color={"#FF4D67"} />
+          ) : (
+            <Ionicons name="heart-outline" size={24} color={"#fff"} />
+          )}
         </TouchableOpacity>
-      ) : !isSongLoading && isPlaying ? (
-        <TouchableOpacity
-          style={styles.miniPlayerIcon}
-          onPress={() => {
-            sound.pauseAsync();
-            setIsPlaying(false);
-          }}
-        >
-          <Ionicons name="pause" size={24} color="white" />
-        </TouchableOpacity>
-      ) : (
-        <ActivityIndicator
-          size={24}
-          color={"white"}
-          style={styles.miniPlayerIcon}
+        {!isSongLoading && playbackState.state !== State.Playing ? (
+          <TouchableOpacity
+            style={styles.miniPlayerIcon}
+            onPress={async () => {
+              await TrackPlayer.play();
+              setIsPlaying(true);
+            }}
+          >
+            <Ionicons name="play" size={24} color="white" />
+          </TouchableOpacity>
+        ) : !isSongLoading && playbackState.state === State.Playing ? (
+          <TouchableOpacity
+            style={styles.miniPlayerIcon}
+            onPress={async () => {
+              await TrackPlayer.pause();
+              setIsPlaying(false);
+            }}
+          >
+            <Ionicons name="pause" size={24} color="white" />
+          </TouchableOpacity>
+        ) : isSongLoading ||
+          playbackState.state === State.Buffering ||
+          playbackState.state === State.Loading ? (
+          <ActivityIndicator
+            size={24}
+            color={"white"}
+            style={styles.miniPlayerIcon}
+          />
+        ) : null}
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+const TrackComponent = ({
+  item,
+  setCurrentQueue,
+  setIsSongLoading,
+  setCurrentSong,
+  setSongUrl,
+  songs,
+  userInfo,
+  index,
+}) => {
+  const { currentSong } = useSong();
+  const [favorites, setFavorites] = useState([]);
+
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (currentSong?.videoId === item?.videoId) {
+      Animated.loop(
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 3000, // Adjust speed of rotation
+          easing: Easing.linear, // Smooth infinite rotation
+          useNativeDriver: true,
+        })
+      ).start();
+    } else {
+      rotateAnim.setValue(0); // Reset rotation when not playing
+    }
+  }, [currentSong]);
+
+  // Interpolating rotation
+  const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
+
+  const getFav = async () => {
+    const fav = JSON.parse(await AsyncStorage.getItem("favourites")) || [];
+    const song = fav.find((e) => e.videoId === item.videoId);
+    if (song) {
+      const indexToremove = fav.findIndex((e) => e.videoId === item.videoId);
+      fav.splice(indexToremove, 1);
+      setFavorites(fav);
+    }
+    const data = await getFavourites();
+    if (data) {
+      setFavorites(data);
+    }
+  };
+
+  useEffect(() => {
+    getFav();
+  }, []);
+
+  return (
+    <TouchableOpacity
+      onPress={async () => {
+        setCurrentQueue(songs.slice(index, songs.length));
+        if (!userInfo) {
+          await saveToRecentlyPlayed(item);
+        }
+        await playSong(
+          item,
+          setIsSongLoading,
+          setCurrentSong,
+          setSongUrl,
+          userInfo?.email
+        );
+      }}
+      style={styles.trackItem}
+    >
+      <View style={{ flexDirection: "row", flex: 0.8 }}>
+        <Image
+          source={{ uri: item?.thumbnail[0]?.url || item.thumbnail }}
+          style={styles.trackImage}
         />
+        <View style={styles.trackDetails}>
+          <Text numberOfLines={1} style={styles.trackTitle}>
+            {item.title?.slice(0, 20)}...
+          </Text>
+          <Text numberOfLines={1} style={styles.trackArtist}>
+            {item.author?.slice(0, 20)}
+          </Text>
+        </View>
+      </View>
+      {currentSong?.videoId === item?.videoId && (
+        <Animated.View style={{ transform: [{ rotate: spin }] }}>
+          <FontAwesome5 name="compact-disc" size={24} color={"#181A3Aff"} />
+        </Animated.View>
       )}
+      <TouchableOpacity
+        onPress={async () => {
+          // console.log(item);
+          const data = await handleLiked(userInfo?.email, item);
+          if (data) await saveToFavourites(data.favourites);
+        }}
+        style={{ marginRight: 10 }}
+      >
+        {favorites.find((song) => song.videoId === item.videoId) && (
+          <Ionicons name="heart" size={24} color={"#FF4D67"} />
+        )}
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   cardContainer: {
-    marginHorizontal: 10,
+    flexDirection: "column",
+    gap: 10,
     alignItems: "center",
-    width: 120,
+    width: 150,
+    height: 250,
+    marginHorizontal: 10,
   },
   image: {
-    width: 100,
-    height: 100,
+    width: 150,
+    height: 150,
     borderRadius: 10,
   },
   title: {
@@ -486,7 +887,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "white",
     textAlign: "center",
-    marginTop: 5,
+    // marginTop: 5,
   },
   artist: {
     fontSize: 12,
@@ -504,7 +905,7 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     padding: 10,
     borderRadius: 10,
-    backgroundColor: "#222",
+    backgroundColor: "#FF4C98",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -524,7 +925,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#2c2c2e",
-    padding: width * 0.03,
+    padding: width * 0.04,
     borderRadius: 8,
     marginVertical: width * 0.02,
     minWidth: width * 0.45,
@@ -546,7 +947,7 @@ const styles = StyleSheet.create({
   },
   fullScreenContainer: {
     // flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: "#2F1C6A",
     alignItems: "center",
     justifyContent: "center",
     padding: 20,
@@ -562,7 +963,7 @@ const styles = StyleSheet.create({
   header: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#FFF",
+    color: "#00ffcc",
     marginBottom: 20,
   },
   nowPlayingImage: {
@@ -574,12 +975,12 @@ const styles = StyleSheet.create({
   nowPlayingTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#FFF",
+    color: "#EAEAEA",
     textAlign: "center",
   },
   nowPlayingArtist: {
     fontSize: 16,
-    color: "#BBB",
+    color: "#B3B3B3",
     textAlign: "center",
     marginBottom: 20,
   },
@@ -608,13 +1009,14 @@ const styles = StyleSheet.create({
   miniPlayerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "lightblue",
+    backgroundColor: "#3A86FF",
     padding: 10,
     borderRadius: 10,
     position: "absolute",
-    bottom: height * 0.09,
+    bottom: height * 0.098,
     left: 10,
     right: 10,
+    gap: 5,
   },
   miniPlayerImage: {
     width: 50,
@@ -622,7 +1024,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   miniPlayerInfo: {
-    flex: 1,
+    flex: 0.75,
     marginLeft: 10,
   },
   miniPlayerTitle: {
@@ -631,24 +1033,17 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   miniPlayerArtist: {
-    color: "gray",
+    color: "#BFC0C0",
     fontSize: 14,
   },
   miniPlayerIcon: {
-    marginRight: 10,
-  },
-  overlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0, 0, 0, 0.5)", // Semi-transparent background
+    margin: "auto",
   },
   modalContainer: {
-    height: "50%", // Half-screen modal
+    height: height * 0.5,
     backgroundColor: "#222",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    borderTopLeftRadius: 5,
+    borderTopRightRadius: 5,
   },
   queueHeader: {
     borderBottomWidth: 1,
@@ -665,6 +1060,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 0.5,
     borderBottomColor: "#444",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
   },
   songTitle: {
     fontSize: 16,
@@ -673,6 +1072,32 @@ const styles = StyleSheet.create({
   artist: {
     fontSize: 14,
     color: "#aaa",
+  },
+  trackItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#457B9D",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 5,
+    justifyContent: "space-between",
+  },
+  trackImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+  },
+  trackTitle: {
+    width: "100%",
+    fontSize: 16,
+    color: "#fff",
+  },
+  trackArtist: {
+    fontSize: 14,
+    color: "#bbb",
+  },
+  trackDetails: {
+    marginLeft: 15,
   },
 });
 
@@ -685,4 +1110,5 @@ export {
   NowPlayingScreen,
   MiniPlayer,
   QueueModal,
+  TrackComponent,
 };

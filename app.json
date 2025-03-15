@@ -2,6 +2,7 @@
   "expo": {
     "name": "Vibe",
     "slug": "vibe",
+    "scheme": "vibe",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,12 +10,15 @@
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#171937ff"
     },
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio",
+          "audio"
+        ]
       }
     },
     "android": {
@@ -25,9 +29,13 @@
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.WAKE_LOCK",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.WAKE_LOCK"
       ],
-      "package": "com.codewitharun.vibe"
+      "package": "com.codewitharun.vibe",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
@@ -59,7 +67,16 @@
       "eas": {
         "projectId": "dedbb4c2-b4b5-4cd0-b5da-9866af721727"
       },
-      "runtimeVersion": "1.0.0"
+      "googleSignIn": {
+        "webClientId": "646829397044-887ciir3t248opanf02i7nag09lm969g.apps.googleusercontent.com",
+        "androidClientId": "646829397044-f3qdrua5rtvj5dnb75odk8ot2f1t7str.apps.googleusercontent.com"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/dedbb4c2-b4b5-4cd0-b5da-9866af721727"
     }
   }
 }
