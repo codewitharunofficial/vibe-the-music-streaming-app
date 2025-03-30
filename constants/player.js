@@ -12,7 +12,7 @@ export const playSong = async (
   await saveToRecentlyPlayed(song);
   setIsSongLoading(true);
   setCurrentSong(song);
-  const url = await playASongs(song?.videoId, email, song);
+  const url = await playASongs(song?.videoId, email, song, setCurrentSong, song);
   if (url) {
     setSongUrl(url);
     setIsSongLoading(false);

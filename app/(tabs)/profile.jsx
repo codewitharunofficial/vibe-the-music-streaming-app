@@ -18,7 +18,7 @@ import { AntDesign, MaterialIcons } from "@expo/vector-icons";
 import axios from "axios";
 import { useUser } from "@/context/User";
 import { router } from "expo-router";
-import { saveToFavourites } from "@/constants/cachedData";
+import { mergeRecents, saveToFavourites } from "@/constants/cachedData";
 import { useSong } from "@/context/SongContext";
 import Loader from "@/components/Loader";
 
@@ -33,9 +33,8 @@ const UserProfile = () => {
   const isDarkMode = colorScheme === "dark";
   const { currentSong } = useSong();
   const [isLoading, setIsLoading] = useState(false);
-  const {height} = Dimensions.get("window");
+  const { height } = Dimensions.get("window");
 
-  // Configure Google OAuth with expo-auth-session
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: Constants.expoConfig?.extra?.googleSignIn?.androidClientId,
     clientId: Constants.expoConfig?.extra?.googleSignIn?.webClientId,
@@ -90,6 +89,7 @@ const UserProfile = () => {
         setUserInfo(data.user);
         await AsyncStorage.setItem("userInfo", JSON.stringify(data.user));
         await saveToFavourites(data.user?.favourites);
+        await mergeRecents(data.user.recently_played);
         setIsLoading(false);
       } else {
         setIsLoading(false);
@@ -154,7 +154,12 @@ const UserProfile = () => {
   }, []);
 
   return (
-    <View style={[styles.container, { paddingBottom: currentSong ? height * 0.1 : 0 }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingBottom: currentSong ? height * 0.1 : 0 },
+      ]}
+    >
       {userInfo ? (
         <Animated.View style={[styles.profileContainer, { opacity: fadeAnim }]}>
           <Image

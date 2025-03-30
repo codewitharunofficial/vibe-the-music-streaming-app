@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Animated,
   Alert,
   Easing,
+  ToastAndroid,
 } from "react-native";
 import {
   Ionicons,
@@ -27,6 +28,26 @@ import Slider from "@react-native-community/slider";
 import { useSong } from "@/context/SongContext";
 import { usePlayer } from "@/context/PlayerContext";
 import { playSong, shareSong } from "@/constants/player";
+import { useUser } from "@/context/User";
+import TrackPlayer, {
+  usePlaybackState,
+  useProgress,
+  Event,
+  State,
+  RepeatMode,
+} from "react-native-track-player";
+import { updateServiceData } from "@/trackPlayerUtils";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import SongOptionsModal from "./OptionsOnNowPlaying";
+import {
+  getFavourites,
+  removeFromFavourites,
+  saveToFavourites,
+  saveToRecentlyPlayed,
+} from "@/constants/cachedData";
+import { fetchAndQueueNextTrack } from "@/trackPlayerUtils";
+import { handleLiked, handleRecentlyPlayed } from "@/constants/apiCalls";
+import axios from "axios";
 // import { Audio } from "expo-av";
 
 const { width, height } = Dimensions.get("window");
@@ -284,25 +305,6 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
   );
 };
 
-import TrackPlayer, {
-  RepeatMode,
-  Event,
-  usePlaybackState,
-  useProgress,
-  State,
-} from "react-native-track-player";
-import axios from "axios";
-import {
-  getFavourites,
-  saveToFavourites,
-  saveToRecentlyPlayed,
-} from "@/constants/cachedData";
-import { useUser } from "@/context/User";
-import { handleLiked, handleRecentlyPlayed } from "@/constants/apiCalls";
-import SongOptionsModal from "./OptionsOnNowPlaying";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Share } from "react-native";
-
 const NowPlayingScreen = ({
   song,
   isVisible,
@@ -319,6 +321,7 @@ const NowPlayingScreen = ({
   const [showQueue, setShowQueue] = useState(false);
   const playbackState = usePlaybackState();
   const { position, duration } = useProgress();
+  const [favorites, setFavorites] = useState([]);
   // const isInitialLoad = useRef(true);
 
   // Handle PlaybackActiveTrackChanged
@@ -537,8 +540,13 @@ const NowPlayingScreen = ({
       setIsSongLoading(true);
       if (currentIndex > 0) {
         const prevTrack = currentQueue[currentIndex - 1];
-        const url = await playSong(prevTrack, setIsSongLoading, setCurrentSong);
-        setSongUrl(url);
+        const url = await playSong(
+          prevTrack,
+          setIsSongLoading,
+          setCurrentSong,
+          setSongUrl
+        );
+        // setSongUrl(url);
         setCurrentIndex(currentIndex - 1);
         setIsPlaying(true);
         if (userInfo) {
@@ -573,6 +581,39 @@ const NowPlayingScreen = ({
           Math.floor(seconds % 60)
         ).padStart(2, "0")}`;
 
+  const handleLike = async () => {
+    if (!userInfo) {
+      Alert.alert("Error!", "Please Sign In To Add Tracks to Favourites");
+    } else {
+      const fav = await getFavourites();
+      if (fav.find((item) => item.videoId === currentSong.videoId)) {
+        const newFav = await removeFromFavourites(currentSong);
+        setFavorites(newFav);
+        const data = await handleLiked(userInfo?.email, currentSong);
+        console.log(data);
+      } else {
+        fav.push(currentSong);
+        await saveToFavourites(fav);
+        const data = await handleLiked(userInfo?.email, currentSong);
+        setFavorites(fav);
+        await saveToFavourites(data.favourites);
+      }
+    }
+  };
+
+  const getFav = async () => {
+    if (userInfo) {
+      const data = await getFavourites();
+      setFavorites(data);
+    }
+  };
+
+  useEffect(() => {
+    if(favorites.length === 0){
+      getFav();
+    }
+  }, [userInfo, handleLike, favorites]);
+
   if (!song) return null;
 
   return (
@@ -587,14 +628,9 @@ const NowPlayingScreen = ({
       }
       style={{ flex: 1 }}
     >
-      <ModalContent style={styles.fullScreenContainer}>
-        <TouchableOpacity
-          style={{ margin: 10, alignItems: "center" }}
-          onPress={() => shareSong(currentSong)}
-        >
-          <AntDesign name="sharealt" size={24} color="#00ffcc" />
-          <Text style={{ color: "#fff" }}>Share</Text>
-        </TouchableOpacity>
+      <ModalContent
+        style={[styles.fullScreenContainer, { paddingTop: height * 0.08 }]}
+      >
         <Text style={styles.header}>Vibe - Now Playing</Text>
         <Image
           source={{ uri: song.thumbnail?.url || song.thumbnail }}
@@ -602,6 +638,26 @@ const NowPlayingScreen = ({
         />
         <Text style={styles.nowPlayingTitle}>{song.title?.slice(0, 30)}</Text>
         <Text style={styles.nowPlayingArtist}>{song.author?.slice(0, 30)}</Text>
+        <View style={[styles.nowPlayingControls, { paddingHorizontal: 10 }]}>
+          <TouchableOpacity
+            style={[styles.shareButton, { margin: 10, alignItems: "center" }]}
+            onPress={() => shareSong(currentSong)}
+          >
+            <AntDesign name="sharealt" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.miniPlayerIcon}
+            onPress={async () => {
+              handleLike();
+            }}
+          >
+            {favorites.find((item) => item.videoId === currentSong.videoId) ? (
+              <Ionicons name="heart" size={24} color={"#FF4D67"} />
+            ) : (
+              <Ionicons name="heart-outline" size={24} color={"#fff"} />
+            )}
+          </TouchableOpacity>
+        </View>
         <View style={styles.sliderContainer}>
           <Text style={styles.timeText}>{formatTime(position)}</Text>
           <Slider
@@ -656,6 +712,8 @@ const NowPlayingScreen = ({
   );
 };
 
+// export default NowPlayingScreen;
+
 const MiniPlayer = ({
   song,
   onOpen,
@@ -674,12 +732,18 @@ const MiniPlayer = ({
       Alert.alert("Error!", "Please Sign In To Add Tracks to Favourites");
     } else {
       const fav = await getFavourites();
-      // console.log("favourites: ", fav);
-      fav.push(currentSong);
-      await saveToFavourites(fav);
-      setFavorites(fav);
-      const data = await handleLiked(userInfo?.email, currentSong);
-      await saveToFavourites(data.favourites);
+      if (fav.find((item) => item.videoId === currentSong.videoId)) {
+        const newFav = await removeFromFavourites(currentSong);
+        setFavorites(newFav);
+        const data = await handleLiked(userInfo?.email, currentSong);
+        console.log(data);
+      } else {
+        fav.push(currentSong);
+        await saveToFavourites(fav);
+        const data = await handleLiked(userInfo?.email, currentSong);
+        setFavorites(fav);
+        await saveToFavourites(data.favourites);
+      }
     }
   };
 
@@ -771,6 +835,7 @@ const TrackComponent = ({
   songs,
   userInfo,
   index,
+  onPress,
 }) => {
   const { currentSong } = useSong();
   const [favorites, setFavorites] = useState([]);
@@ -813,16 +878,20 @@ const TrackComponent = ({
   };
 
   useEffect(() => {
-    getFav();
-  }, []);
+    if (favorites.length < 1) {
+      getFav();
+    }
+  }, [currentSong, favorites]);
 
   return (
     <TouchableOpacity
       onPress={async () => {
+        console.log(index);
         setCurrentQueue(songs.slice(index, songs.length));
         if (!userInfo) {
           await saveToRecentlyPlayed(item);
         }
+        await TrackPlayer.reset();
         await playSong(
           item,
           setIsSongLoading,
@@ -853,11 +922,7 @@ const TrackComponent = ({
         </Animated.View>
       )}
       <TouchableOpacity
-        onPress={async () => {
-          // console.log(item);
-          const data = await handleLiked(userInfo?.email, item);
-          if (data) await saveToFavourites(data.favourites);
-        }}
+        onPress={async () => onPress(item)}
         style={{ marginRight: 10 }}
       >
         {favorites.find((song) => song.videoId === item.videoId) && (
@@ -946,65 +1011,68 @@ const styles = StyleSheet.create({
     marginBottom: width * 0.02,
   },
   fullScreenContainer: {
-    // flex: 1,
-    backgroundColor: "#2F1C6A",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
     width: width,
     height: height * 0.93,
+    backgroundColor: "#2F1C6A",
+    padding: 20,
   },
-  closeButton: {
-    position: "absolute",
-    top: 20,
-    right: 20,
-    zIndex: 10,
+  shareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  shareText: {
+    color: "#fff",
+    marginLeft: 5,
+    fontSize: 16,
   },
   header: {
-    fontSize: 18,
+    color: "#fff",
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#00ffcc",
+    textAlign: "center",
     marginBottom: 20,
   },
   nowPlayingImage: {
-    width: 200,
-    height: 200,
+    width: "100%",
+    height: 300,
     borderRadius: 10,
     marginBottom: 20,
+    objectFit: "fill",
   },
   nowPlayingTitle: {
+    color: "#fff",
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#EAEAEA",
+    fontWeight: "600",
     textAlign: "center",
+    marginBottom: 5,
   },
   nowPlayingArtist: {
+    color: "#ccc",
     fontSize: 16,
-    color: "#B3B3B3",
     textAlign: "center",
     marginBottom: 20,
   },
   sliderContainer: {
     flexDirection: "row",
     alignItems: "center",
-    width: "90%",
-    marginBottom: 10,
+    marginVertical: 20,
   },
   slider: {
     flex: 1,
     height: 40,
   },
   timeText: {
-    color: "#FFF",
-    fontSize: 14,
-    marginHorizontal: 10,
+    color: "#fff",
+    fontSize: 12,
+    width: 40,
+    textAlign: "center",
   },
   nowPlayingControls: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    width: "60%",
-    marginTop: 20,
+    alignItems: "center",
+    paddingHorizontal: 20,
   },
   miniPlayerContainer: {
     flexDirection: "row",

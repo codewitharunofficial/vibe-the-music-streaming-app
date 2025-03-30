@@ -119,7 +119,7 @@ export default function RootLayoutNav() {
           Capability.SeekTo,
         ],
         stopWithApp: true,
-        android: {appKilledPlaybackBehavior: AppKilledPlaybackBehavior.ContinuePlayback},
+        android: { appKilledPlaybackBehavior: AppKilledPlaybackBehavior.ContinuePlayback },
         waitForBuffer: true
       });
       console.log("TrackPlayer options updated");
@@ -190,9 +190,11 @@ export default function RootLayoutNav() {
     );
   }
 
+  const headerColor = "#fff";
+
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
+      <ThemeProvider value={DarkTheme}>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="recents" options={{ headerShown: false }} />
@@ -201,19 +203,19 @@ export default function RootLayoutNav() {
           <Stack.Screen name="album" options={{ headerShown: false }} />
           <Stack.Screen
             name="favourites"
-            options={{ headerShown: true, headerTitle: "Favourite Songs" }}
+            options={{ headerShown: true, headerTitle: "Favourite Songs", headerTitleStyle: { color: headerColor } }}
           />
           <Stack.Screen
             name="soon"
-            options={{ headerShown: true, headerTitle: "Not Available" }}
+            options={{ headerShown: true, headerTitle: "Not Available", headerTitleStyle: { color: headerColor } }}
           />
           <Stack.Screen
             name="playlists"
-            options={{ headerShown: true, headerTitle: "My Playlists" }}
+            options={{ headerShown: true, headerTitle: "My Playlists", headerTitleStyle: { color: headerColor } }}
           />
           <Stack.Screen
             name="user-playlist"
-            options={{ headerShown: true, headerTitle: `${playlistName}` }}
+            options={{ headerShown: true, headerTitle: `${playlistName}`, headerTitleStyle: { color: headerColor } }}
           />
         </Stack>
         <ModalPortal />

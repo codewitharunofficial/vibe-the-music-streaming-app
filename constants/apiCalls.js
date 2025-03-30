@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+import { mergeRecents } from "./cachedData";
 
 export const fetchHome = async (setIsLoading) => {
   const options = {
@@ -16,16 +17,21 @@ export const fetchHome = async (setIsLoading) => {
     setIsLoading(true);
     const { data } = await axios.request(options);
     console.log(data);
-    await AsyncStorage.setItem("home", JSON.stringify(data.results));
-    setIsLoading(false);
-    return data.results;
+    if (data.results) {
+      await AsyncStorage.setItem("home", JSON.stringify(data.results));
+      const now = new Date().getTime();
+      const expiry = now + 24 * 60 * 60 * 1000;
+      await AsyncStorage.setItem('home_updated_at', JSON.stringify(expiry));
+      setIsLoading(false);
+      return data.results;
+    }
   } catch (error) {
     console.error(error);
     setIsLoading(false);
   }
 };
 
-export const playASongs = async (id, email, song) => {
+export const playASongs = async (id, email, song, setCurrentSong, currentSong) => {
   try {
     console.log("Getting song with ID: ", id);
 
@@ -39,6 +45,7 @@ export const playASongs = async (id, email, song) => {
     );
     if (data) {
       console.log(data);
+      setCurrentSong({ ...currentSong, thumbnail: data.song?.thumbnail[data.song.thumbnail?.length - 1]?.url });
       return data.song.adaptiveFormats[data.song.adaptiveFormats?.length - 1]
         ?.url;
     }
@@ -160,7 +167,7 @@ export const retrieveRecentlyPlayed = async (email) => {
       `${process.env.EXPO_PUBLIC_API}/api/get-recents?email=${email}`
     );
     if (data.success) {
-      return data.recently_played;
+      await mergeRecents(data.recently_played)
     }
   } catch (error) {
     console.log(error);

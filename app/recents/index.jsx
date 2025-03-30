@@ -1,22 +1,9 @@
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  FlatList,
-  Image,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
-  Dimensions,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import axios from "axios";
-import { playASongs, retrieveRecentlyPlayed } from "@/constants/apiCalls";
+import { View, Text, FlatList, StyleSheet, Dimensions } from "react-native";
+import { retrieveRecentlyPlayed } from "@/constants/apiCalls";
 import { useSong } from "@/context/SongContext";
 import { checkIfLoggedIn, getRecentlyPlayed } from "@/constants/cachedData";
 import { usePlayer } from "@/context/PlayerContext";
-import { playSong } from "@/constants/player";
 import { useUser } from "@/context/User";
 import Loader from "@/components/Loader";
 import { TrackComponent } from "@/components/Component";
@@ -35,17 +22,8 @@ const SearchScreen = () => {
 
   const fetchRecents = async () => {
     setLoading(true);
-    const isLogged = await checkIfLoggedIn();
-    if (isLogged) {
-      const data = await retrieveRecentlyPlayed(userInfo?.email);
-      if (data) {
-        setSongs(data);
-        setLoading(false);
-      }
-    } else {
-      await getRecentlyPlayed(setIsSongLoading, setSongs);
-      setLoading(false);
-    }
+    await getRecentlyPlayed(setIsSongLoading, setSongs);
+    setLoading(false);
   };
 
   useEffect(() => {

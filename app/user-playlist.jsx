@@ -25,7 +25,7 @@ const UserPlaylistScreen = () => {
   console.log(playlist);
 
   const handlePlaySong = async (song) => {
-    const url = await playASongs(song.videoId, userInfo?.email, song);
+    const url = await playASongs(song.videoId, userInfo?.email, song, setCurrentSong, song);
     if (url) {
       setCurrentSong(song);
       setSongUrl(url);

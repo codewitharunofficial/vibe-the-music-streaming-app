@@ -13,6 +13,7 @@ import { createNewPlaylist, fetchUserPlaylists } from "@/constants/apiCalls";
 import { useUser } from "@/context/User";
 import Loader from "@/components/Loader";
 import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const PlaylistScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -24,8 +25,20 @@ const PlaylistScreen = () => {
   useEffect(() => {
     setPlaylistLoading(true);
     const getPlaylists = async () => {
-      await fetchUserPlaylists(userInfo?.email, setUserPlaylist);
+      const data =
+        JSON.parse(await AsyncStorage.getItem("user-playlists")) || [];
       setPlaylistLoading(false);
+
+      if (data.length > 0) {
+        setUserPlaylist(data);
+      } else {
+        await fetchUserPlaylists(userInfo?.email, setUserPlaylist);
+        await AsyncStorage.setItem(
+          "user-playlists",
+          JSON.stringify(userPlaylist)
+        );
+        setPlaylistLoading(false);
+      }
     };
     getPlaylists();
   }, [handleCreatePlaylist]);
@@ -74,7 +87,7 @@ const PlaylistScreen = () => {
           }
         />
       ) : (
-        <ActivityIndicator color={'#1DB954'} size={24} />
+        <ActivityIndicator color={"#1DB954"} size={24} />
       )}
       <CreatePlaylistModal
         visible={modalVisible}

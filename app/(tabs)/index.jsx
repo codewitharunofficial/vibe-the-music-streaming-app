@@ -1,4 +1,4 @@
-import { ActivityIndicator, Alert, StyleSheet } from "react-native";
+import { ActivityIndicator, Alert, Dimensions, StyleSheet } from "react-native";
 import { View } from "@/components/Themed";
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -30,6 +30,7 @@ import * as Linking from "expo-linking";
 export default function Home() {
   const [home, setHome] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const { height } = Dimensions.get("window");
 
   const { open, setOpen } = useSong();
 
@@ -46,8 +47,16 @@ export default function Home() {
   const savedHome = async () => {
     const results = JSON.parse(await AsyncStorage.getItem("home"));
     if (results) {
+      const isOutdated =
+        new Date().getTime() >
+        JSON.parse(await AsyncStorage.getItem("home_updated_at"));
+      if (isOutdated) {
+        const newResults = await fetchHome(setIsLoading);
+        if (newResults) {
+          setHome(newResults);
+        }
+      }
       setHome(results);
-      // console.log("Loading Saved Home: ", results);
     } else {
       const results = await fetchHome(setIsLoading);
       if (results) {
@@ -125,7 +134,14 @@ export default function Home() {
         home?.quick_picks.slice(index, home?.quick_picks.length - 1)
       );
       setIsSongLoading(true);
-      const url = await playASongs(song.videoId, userInfo?.email, song);
+      await TrackPlayer.reset();
+      const url = await playASongs(
+        song.videoId,
+        userInfo?.email,
+        song,
+        setCurrentSong,
+        song
+      );
       if (url) {
         console.log("URL: ", url);
         setSongUrl(url);
@@ -188,7 +204,12 @@ export default function Home() {
   };
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        { paddingBottom: currentSong ? height * 0.1 : 0 },
+      ]}
+    >
       <View
         style={{
           flexDirection: "row",

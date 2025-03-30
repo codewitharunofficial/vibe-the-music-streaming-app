@@ -65,8 +65,9 @@ export default function TabLayout() {
           ),
           headerTitle: "Search - Vibe",
           headerStyle: { backgroundColor: "#1A1A2E" },
-          headerTitleStyle: {color: '#fff'}
+          headerTitleStyle: {color: '#fff'},
           // tabBarStyle: { backgroundColor: "#1A1A2E", flex: 0.1 },
+          tabBarHideOnKeyboard: true
 
         }}
       />
@@ -78,8 +79,9 @@ export default function TabLayout() {
             <Ionicons name="person" color={color} size={size} />
           ),
           headerStyle: { backgroundColor: "#1A1A2E" },
-          headerTitleStyle: {color: '#fff'}
+          headerTitleStyle: {color: '#fff'},
           // tabBarStyle: { backgroundColor: "#1A1A2E", flex: 0.1 },
+          tabBarHideOnKeyboard: true,
         }}
       />
     </Tabs>

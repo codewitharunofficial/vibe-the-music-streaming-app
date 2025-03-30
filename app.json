@@ -15,10 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "UIBackgroundModes": [
-          "audio",
-          "audio"
-        ]
+        "UIBackgroundModes": ["audio", "audio"]
       }
     },
     "android": {
@@ -64,19 +61,21 @@
       "router": {
         "origin": false
       },
-      "eas": {
-        "projectId": "dedbb4c2-b4b5-4cd0-b5da-9866af721727"
-      },
       "googleSignIn": {
         "webClientId": "646829397044-887ciir3t248opanf02i7nag09lm969g.apps.googleusercontent.com",
         "androidClientId": "646829397044-f3qdrua5rtvj5dnb75odk8ot2f1t7str.apps.googleusercontent.com"
+      },
+      "eas": {
+        "projectId": "d4d32b96-6734-4a14-86b7-a622c707f9c5"
       }
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/dedbb4c2-b4b5-4cd0-b5da-9866af721727"
+      "enabled": true,
+      "url": "https://u.expo.dev/d4d32b96-6734-4a14-86b7-a622c707f9c5",
+      "fallbackToCacheTimeout": 0
     }
   }
 }

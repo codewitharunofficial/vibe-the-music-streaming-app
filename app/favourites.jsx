@@ -13,6 +13,7 @@ import { useSong } from "@/context/SongContext";
 import {
   getFavourites,
   getRecentlyPlayed,
+  removeFromFavourites,
   saveToFavourites,
   saveToRecentlyPlayed,
 } from "@/constants/cachedData";
@@ -40,6 +41,20 @@ const Favourites = () => {
     setFavorites(data);
   };
 
+  const handleLike = async (song) => {
+    try {
+      const fav = await getFavourites();
+      if (fav.find((item) => item.videoId === song.videoId)) {
+        const newFav = await removeFromFavourites(song);
+        setFavorites(newFav);
+        const data = await handleLiked(userInfo?.email, song);
+        console.log(data);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   useEffect(() => {
     getFav();
   }, []);
@@ -58,7 +73,17 @@ const Favourites = () => {
           data={favorites}
           keyExtractor={(item) => item?.videoId.toString()}
           renderItem={({ item, index }) => (
-            <TrackComponent item={item} songs={favorites} setCurrentQueue={setCurrentQueue} setCurrentSong={setCurrentSong} setIsSongLoading={setIsSongLoading} setSongUrl={setSongUrl} index={index} userInfo={userInfo} />
+            <TrackComponent
+              item={item}
+              songs={favorites}
+              setCurrentQueue={setCurrentQueue}
+              setCurrentSong={setCurrentSong}
+              setIsSongLoading={setIsSongLoading}
+              setSongUrl={setSongUrl}
+              index={index}
+              userInfo={userInfo}
+              onPress={handleLike}
+            />
           )}
           contentContainerStyle={{ flexDirection: "column-reverse" }}
           scrollEnabled={true}

@@ -31,7 +31,8 @@
         "buildType": "apk",
         "channel": "production",
         "gradleCommand": ":app:assembleRelease"
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {

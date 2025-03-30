@@ -31,6 +31,7 @@ const SongOptionsModal = ({
   const { currentQueue, setCurrentQueue } = usePlayer();
   const { currentIndex, setCurrentIndex } = usePlayer();
   const { currentSong, setCurrentSong } = useSong();
+  const [selectedPlaylist, setSelectedPlaylist] = useState("");
 
   const handlePlayLater = async () => {
     const track = {
@@ -109,7 +110,7 @@ const SongOptionsModal = ({
             onPress={() => shareSong(currentSong)}
           >
             <AntDesign name="sharealt" size={24} color="white" />
-            <Text style={styles.closeButtonText}>Share</Text>
+            <Text style={styles.optionText}>Share</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -137,13 +138,14 @@ const SongOptionsModal = ({
                 style={styles.optionButton}
                 onPress={async () => {
                   setIsAddingSong(true);
+                  setSelectedPlaylist(item.name);
                   await handleAddToPlaylist(userInfo?.email, item.name, song);
                   setIsAddingSong(false);
                   setPlaylistModalVisible(false);
                   onClose();
                 }}
               >
-                {isAddingSong ? (
+                {isAddingSong && item.name === selectedPlaylist ? (
                   <ActivityIndicator size={"small"} color={"green"} />
                 ) : (
                   <Ionicons name="musical-notes" size={24} color="white" />
