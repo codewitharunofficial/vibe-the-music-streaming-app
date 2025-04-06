@@ -47,48 +47,6 @@ export default function RootLayoutNav() {
 
   const route = useSegments();
   const { userInfo, setUserInfo } = useUser();
-  const [isCheckingUpdate, setIsCheckingUpdate] = useState(true);
-
-  // ✅ Function to check for updates
-  const checkForUpdates = async () => {
-    try {
-      const update = await Updates.checkForUpdateAsync();
-      if (update.isAvailable) {
-        Alert.alert(
-          "Update Available",
-          "A new version is available. Do you want to update now?",
-          [
-            {
-              text: "Later",
-              style: "cancel",
-            },
-            {
-              text: "Update Now",
-              onPress: async () => {
-                try {
-                  await Updates.fetchUpdateAsync();
-                  await Updates.reloadAsync();
-                } catch (error) {
-                  Alert.alert("Update Error", "Failed to update the app.");
-                }
-              },
-            },
-          ]
-        );
-      }
-    } catch (error) {
-      console.error("Error checking for updates:", error);
-    } finally {
-      setIsCheckingUpdate(false);
-    }
-  };
-
-
-  useEffect(() => {
-    checkForUpdates();
-  }, []);
-
-
 
   const setupTrackPlayer = async () => {
     try {
@@ -181,15 +139,6 @@ export default function RootLayoutNav() {
     loadUserSession();
   }, []);
 
-  if (isCheckingUpdate) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1DB954" />
-        <Text style={styles.loadingText}>Checking for updates...</Text>
-      </View>
-    );
-  }
-
   const headerColor = "#fff";
 
   return (
@@ -216,6 +165,14 @@ export default function RootLayoutNav() {
           <Stack.Screen
             name="user-playlist"
             options={{ headerShown: true, headerTitle: `${playlistName}`, headerTitleStyle: { color: headerColor } }}
+          />
+          <Stack.Screen
+            name="updates"
+            options={{ headerShown: true, headerTitle: `App-Update`, headerTitleStyle: { color: headerColor } }}
+          />
+          <Stack.Screen
+            name="downloaded"
+            options={{ headerShown: true, headerTitle: `Downloaded`, headerTitleStyle: { color: headerColor } }}
           />
         </Stack>
         <ModalPortal />

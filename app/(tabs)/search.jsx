@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   FlatList,
-  Image,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
@@ -12,10 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
-import { handleRecentlyPlayed, playASongs } from "@/constants/apiCalls";
 import { useSong } from "@/context/SongContext";
-import { saveToRecentlyPlayed } from "@/constants/cachedData";
-import { playSong } from "@/constants/player";
 import { usePlayer } from "@/context/PlayerContext";
 import { useUser } from "@/context/User";
 import { TrackComponent } from "@/components/Component";
@@ -105,6 +101,7 @@ const SearchScreen = () => {
               setSongUrl={setSongUrl}
               index={index}
               userInfo={userInfo}
+              playingFrom={'Search'}
             />
           )}
           showsVerticalScrollIndicator={false}

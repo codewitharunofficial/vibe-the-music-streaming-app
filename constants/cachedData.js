@@ -1,4 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system';
+import { playASongs } from "./player";
+
 
 export const saveToRecentlyPlayed = async (song) => {
   console.log(song);
@@ -36,27 +40,25 @@ export const getRecentlyPlayed = async (setIsLoading, setSongs) => {
 
 export const mergeRecents = async (remoteRecents) => {
   try {
-    // Get local recents from AsyncStorage
     console.log("Remote Recents: ", remoteRecents);
+
     const localData = await AsyncStorage.getItem('recents');
     const localRecents = localData ? JSON.parse(localData) : [];
 
-    // Merge and avoid duplicates
-    const mergedRecents = [...localRecents, ...remoteRecents].reduce((acc, song) => {
-      if (!acc.find((item) => item.id === song.id)) {
-        acc.push(song);
-      }
-      return acc;
-    }, []);
+    const validRemoteRecents = Array.isArray(remoteRecents) ? remoteRecents : [];
 
-    // Save the merged recents back to AsyncStorage
-    await AsyncStorage.setItem('recents', JSON.stringify(mergedRecents));
+    // Merge and remove duplicates efficiently using Map
+    const mergedRecents = [...localRecents, ...validRemoteRecents];
+    const uniqueRecents = Array.from(new Map(mergedRecents.map(item => [item.id, item])).values());
 
-    console.log('Recents merged successfully', mergedRecents);
-    return mergedRecents;
+    await AsyncStorage.setItem('recents', JSON.stringify(uniqueRecents));
+
+    console.log('Recents merged successfully', uniqueRecents);
+    return uniqueRecents;
 
   } catch (error) {
     console.error('Error merging recents:', error);
+    return [];
   }
 };
 
@@ -86,10 +88,9 @@ export const removeFromFavourites = async (song) => {
       const itemIndex = list.findIndex(e => e.videoId === song.videoId);
 
       if (itemIndex !== -1) {
-        // Remove the song from the list
+        
         list.splice(itemIndex, 1);
-
-        // Save the updated list back to AsyncStorage
+        
         await AsyncStorage.setItem('favourites', JSON.stringify(list));
         console.log("Updated favourites: ", list);
       }
@@ -114,3 +115,90 @@ export const checkIfLoggedIn = async () => {
     console.error("Error Fetching user:", error);
   }
 };
+
+
+export const downloadAndSaveSong = async (song, setProgress) => {
+  try {
+
+    const songUrl = await playASongs(song.videoId || song.id);
+
+    console.log("Downloading Song...", song);
+
+    const { status } = await MediaLibrary.requestPermissionsAsync();
+    if (status !== 'granted') {
+      alert('Permission required to save songs offline.');
+      return null;
+    }
+
+    // Define file path
+    const fileUri = `${FileSystem.cacheDirectory}${song.title}.mp3`;
+
+    if (songUrl) {
+
+      const downloadResumable = FileSystem.createDownloadResumable(songUrl, fileUri, {},
+        (downloadProgress) => {
+          const progressPercentage = Math.round(
+            (downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite) * 100
+          );
+          setProgress(progressPercentage);
+        });
+      const { uri } = await downloadResumable.downloadAsync();
+      console.log("Downloaded to:", uri);
+
+
+      await MediaLibrary.saveToLibraryAsync(uri);
+
+
+      const existingSongs = JSON.parse(await AsyncStorage.getItem('downloadedSongs')) || [];
+      const newSong = { title: song.title, author: song.artist || song.author, thumbnail: song.thumbnail || song.artwork, uri: uri, id: song.videoId || song.id };
+      const newSongs = [...existingSongs, newSong];
+
+      await AsyncStorage.setItem('downloadedSongs', JSON.stringify(newSongs));
+      console.log("Song Downloaded and Saved");
+      return uri;
+    }
+
+  } catch (error) {
+    console.error('Download error:', error);
+    return null;
+  }
+};
+
+export const getDownloadedSongs = async () => {
+  try {
+    const songs = JSON.parse(await AsyncStorage.getItem('downloadedSongs')) || [];
+    return songs; // Returns an array of {title, author, thumbnail, uri}
+  } catch (error) {
+    console.error('Error retrieving songs:', error);
+    return [];
+  }
+};
+
+
+export const checkIfDownloaded = async (id) => {
+  try {
+
+    console.log("Checking Song With: ", id);
+
+    const songs = await getDownloadedSongs();
+
+    console.log("All Downloaded Songs: ", songs);
+
+    if (songs?.length > 0) {
+      const isDownloaded = songs.find((s) => s.id === id);
+      console.log("Found Song: ", isDownloaded);
+      if (isDownloaded) {
+        return true
+      } else return false
+    } else {
+      return false
+    }
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+
+
+
+

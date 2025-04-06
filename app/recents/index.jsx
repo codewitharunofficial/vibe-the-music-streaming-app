@@ -49,6 +49,7 @@ const SearchScreen = () => {
               setSongUrl={setSongUrl}
               index={index}
               userInfo={userInfo}
+              playingFrom={'Recents'}
             />
           )}
           contentContainerStyle={{ flexDirection: "column" }}

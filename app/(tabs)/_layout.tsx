@@ -1,11 +1,11 @@
 import React from "react";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
-import { Link, Tabs } from "expo-router";
-import { Dimensions, Pressable } from "react-native";
+import { Link, router, Tabs } from "expo-router";
+import { Dimensions, Pressable, TouchableOpacity, View } from "react-native";
 
 import Colors from "@/constants/Colors";
 import { useColorScheme } from "@/components/useColorScheme";
-import { Ionicons } from "@expo/vector-icons";
+import { FontAwesome6, Ionicons, MaterialIcons } from "@expo/vector-icons";
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
@@ -24,7 +24,7 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
         tabBarStyle: { flex: 0.1, alignItems: "center" },
-        tabBarItemStyle: { padding: 15, backgroundColor: "#1A1A2E", },
+        tabBarItemStyle: { padding: 15, backgroundColor: "#1A1A2E" },
       }}
     >
       <Tabs.Screen
@@ -39,7 +39,7 @@ export default function TabLayout() {
                   <FontAwesome
                     name="music"
                     size={25}
-                    color='#fff'
+                    color="#fff"
                     style={{
                       marginLeft: 15,
                       marginRight: 5,
@@ -52,8 +52,31 @@ export default function TabLayout() {
           ),
           headerTitle: "Vibe",
           headerStyle: { backgroundColor: "#1A1A2E" },
-          headerTitleStyle: {color: '#fff'}
-          // tabBarStyle: { backgroundColor: "#1A1A2E", flex: 0.1 },
+          headerTitleStyle: { color: "#fff" },
+          headerRight: () => {
+            return (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => router.navigate({ pathname: "/updates" })}
+                  style={{ marginRight: 20 }}
+                >
+                  <MaterialIcons name="update" size={25} color={"#fff"} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => router.navigate({ pathname: "/downloaded" })}
+                  style={{ marginRight: 20 }}
+                >
+                  <FontAwesome6 name="download" size={20} color={"#fff"} />
+                </TouchableOpacity>
+              </View>
+            );
+          },
         }}
       />
       <Tabs.Screen
@@ -65,10 +88,9 @@ export default function TabLayout() {
           ),
           headerTitle: "Search - Vibe",
           headerStyle: { backgroundColor: "#1A1A2E" },
-          headerTitleStyle: {color: '#fff'},
+          headerTitleStyle: { color: "#fff" },
           // tabBarStyle: { backgroundColor: "#1A1A2E", flex: 0.1 },
-          tabBarHideOnKeyboard: true
-
+          tabBarHideOnKeyboard: true,
         }}
       />
       <Tabs.Screen
@@ -79,7 +101,7 @@ export default function TabLayout() {
             <Ionicons name="person" color={color} size={size} />
           ),
           headerStyle: { backgroundColor: "#1A1A2E" },
-          headerTitleStyle: {color: '#fff'},
+          headerTitleStyle: { color: "#fff" },
           // tabBarStyle: { backgroundColor: "#1A1A2E", flex: 0.1 },
           tabBarHideOnKeyboard: true,
         }}

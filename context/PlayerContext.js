@@ -17,6 +17,7 @@ export const PlayerProvider = ({ children }) => {
   const [repeat, setRepeat] = useState(false);
   const [currentQueue, setCurrentQueue] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [playingFrom, setPlayingFrom] = useState('Home');
 
   useEffect(() => {
     if (status) {
@@ -67,6 +68,8 @@ export const PlayerProvider = ({ children }) => {
         setCurrentQueue,
         currentIndex,
         setCurrentIndex,
+        setIsPlaying,
+        playingFrom, setPlayingFrom
       }}
     >
       {children}

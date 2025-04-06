@@ -1,21 +1,20 @@
+import axios from "axios";
 import { Share } from "react-native";
-import { playASongs } from "./apiCalls";
-import { saveToRecentlyPlayed } from "./cachedData";
 
-export const playSong = async (
-  song,
-  setIsSongLoading,
-  setCurrentSong,
-  setSongUrl,
-  email
-) => {
-  await saveToRecentlyPlayed(song);
-  setIsSongLoading(true);
-  setCurrentSong(song);
-  const url = await playASongs(song?.videoId, email, song, setCurrentSong, song);
-  if (url) {
-    setSongUrl(url);
-    setIsSongLoading(false);
+export const playASongs = async (id, email, song) => {
+  try {
+    console.log("Getting song with ID: ", id);
+
+    const { data } = await axios.post(
+      `${process.env.EXPO_PUBLIC_API}/api/song`, { id: id }
+    );
+    if (data) {
+      console.log(data);
+      return data.song.adaptiveFormats[data.song.adaptiveFormats?.length - 1]
+        ?.url;
+    }
+  } catch (error) {
+    console.error(error);
   }
 };
 

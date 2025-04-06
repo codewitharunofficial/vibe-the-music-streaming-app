@@ -25,26 +25,6 @@ const AlbumScreen = () => {
   const { currentQueue, setCurrentQueue } = usePlayer();
   const { userInfo, setUserInfo } = useUser();
 
-  const playSong = async (song, index) => {
-    console.log("Playing song:", song);
-    setCurrentSong(song);
-    // setCurrentQueue(album?.results.slice(index, album.results?.length - 1));
-    if (!userInfo) {
-      await saveToRecentlyPlayed(song);
-    }
-
-    const url = await playASongs(song.videoId, userInfo?.email, song);
-    if (url) {
-      console.log("URL: ", url);
-      setSongUrl(url);
-      setIsSongLoading(false);
-      // setOpen(true);
-    } else {
-      console.log("Unable TO Fetch URL");
-      setIsSongLoading(false);
-    }
-  };
-
   return (
     <View style={styles.container}>
       {/* Playlist Details */}
@@ -66,7 +46,17 @@ const AlbumScreen = () => {
         data={album.results}
         keyExtractor={(item) => item?.videoId.toString()}
         renderItem={({ item, index }) => (
-          <TrackComponent item={item} songs={album.results} setCurrentQueue={setCurrentQueue} setCurrentSong={setCurrentSong} setIsSongLoading={setIsSongLoading} setSongUrl={setSongUrl} index={index} userInfo={userInfo} />
+          <TrackComponent
+            item={item}
+            songs={album.results}
+            setCurrentQueue={setCurrentQueue}
+            setCurrentSong={setCurrentSong}
+            setIsSongLoading={setIsSongLoading}
+            setSongUrl={setSongUrl}
+            index={index}
+            userInfo={userInfo}
+            playingFrom={"Albums"}
+          />
         )}
         contentContainerStyle={{ flexDirection: "column-reverse" }}
         scrollEnabled={true}

@@ -33,27 +33,14 @@ const SongOptionsModal = ({
   const { currentSong, setCurrentSong } = useSong();
   const [selectedPlaylist, setSelectedPlaylist] = useState("");
 
-  const handlePlayLater = async () => {
-    const track = {
-      id: song.videoId,
-      url: song.url,
-      title: song.title,
-      artist: song.author,
-      artwork: song.thumbnail?.url || song.thumbnail,
-    };
-    await TrackPlayer.add(track);
+  const handleRemove = async (index) => {
+    const queue = currentQueue;
+    queue.splice(index, 1);
+    setCurrentQueue(queue);
     onClose();
   };
 
-  // useEffect(() => {
-  //   const index = currentQueue.findIndex(
-  //     (item) => item.videoId === currentSong.videoId
-  //   );
-  //   if (index !== -1) {
-  //     console.log("Current INdex: ", index);
-  //     setCurrentIndex(index);
-  //   }
-  // }, []);
+  // console.log(song);
 
   return (
     <>
@@ -72,16 +59,30 @@ const SongOptionsModal = ({
           <TouchableOpacity
             style={styles.optionButton}
             onPress={async () => {
-              const tracktoMove = currentQueue.at(currentIndex);
-              console.log("Song To Move: ", tracktoMove);
-              await handleQueueSong(tracktoMove);
-              const index = currentQueue.findIndex(
-                (item) => item.videoId === song.videoId
+              const currentTrackIndex = await TrackPlayer.getActiveTrackIndex();
+              console.log("Current Track Index: ", currentTrackIndex);
+              const queue = await TrackPlayer.getQueue();
+
+              const indexToMoveFrom = queue.findIndex(
+                (s) => s.id === song.videoId
               );
-              if (index !== -1) {
-                const arr = moveSong(currentQueue, currentIndex, index + 1);
+
+              console.log("Move From: ", indexToMoveFrom);
+
+              if (indexToMoveFrom !== -1) {
+                console.log(
+                  `Moving Track from ${indexToMoveFrom} to ${
+                    currentTrackIndex + 1
+                  }`
+                );
+                const arr = moveSong(
+                  currentQueue,
+                  indexToMoveFrom,
+                  currentTrackIndex + 1
+                );
                 setCurrentQueue(arr);
                 onClose();
+                await TrackPlayer.move(indexToMoveFrom, currentTrackIndex + 1);
               }
             }}
           >
@@ -91,7 +92,15 @@ const SongOptionsModal = ({
 
           <TouchableOpacity
             style={styles.optionButton}
-            onPress={handlePlayLater}
+            onPress={async () => {
+              const queue = await TrackPlayer.getQueue();
+
+              const indexToremove = queue.findIndex(
+                (s) => s.id === song.videoId
+              );
+              await TrackPlayer.remove(indexToremove);
+              handleRemove(indexToremove);
+            }}
           >
             <Ionicons name="remove" size={24} color="white" />
             <Text style={styles.optionText}>Remove From Queue</Text>

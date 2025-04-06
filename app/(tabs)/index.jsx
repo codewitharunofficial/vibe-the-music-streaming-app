@@ -1,4 +1,10 @@
-import { ActivityIndicator, Alert, Dimensions, StyleSheet } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  StyleSheet,
+  ToastAndroid,
+} from "react-native";
 import { View } from "@/components/Themed";
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -37,9 +43,9 @@ export default function Home() {
   const { songUrl, setSongUrl } = useSong();
   const { isSongLoading, setIsSongLoading } = useSong();
   const { currentSong, setCurrentSong } = useSong();
-  const { isPlaying } = usePlayer();
+  const { isPlaying, setIsPlaying } = usePlayer();
   const [isPlaylistLoading, setIsPlaylistLoading] = useState(false);
-  const { currentQueue, setCurrentQueue } = usePlayer();
+  const { currentQueue, setCurrentQueue, setPlayingFrom } = usePlayer();
   const { setPlaylist, setAlbum } = usePlaylist();
   const [albumLoading, setIsAlbumLoading] = useState(false);
   const { userInfo, setUserInfo } = useUser();
@@ -72,11 +78,10 @@ export default function Home() {
   useEffect(() => {
     const handleDeepLink = async ({ url }) => {
       let { queryParams } = Linking.parse(url);
-      // console.log("Deep Link Opened:", queryParams);
 
       if (queryParams.id) {
         setIsSongLoading(true);
-
+        setPlayingFrom("Share");
         try {
           const song = {
             videoId: queryParams.id,
@@ -85,17 +90,26 @@ export default function Home() {
             thumbnail: decodeURIComponent(queryParams.thumbnail),
           };
           await saveToRecentlyPlayed(song);
-          setCurrentSong(song);
-          const url = await playASongs(song.videoId, userInfo?.email, song);
-          if (url) {
-            console.log("URL: ", url);
-            setSongUrl(url);
-            setIsSongLoading(false);
-            setOpen(true);
-          } else {
-            console.log("Unable TO Fetch URL");
-            setIsSongLoading(false);
+
+          if (userInfo) {
+            await handleRecentlyPlayed(userInfo?.email, song);
           }
+
+          setCurrentSong(song);
+
+          const track = {
+            id: song.videoId,
+            url: `${process.env.EXPO_PUBLIC_STREAM_URL}/play?videoId=${
+              song.videoId
+            }&email=${userInfo?.email || ""}`,
+            title: song.title || "Unknown Title",
+            artist: song.author || "Unknown Artist",
+            artwork: decodeURIComponent(queryParams.thumbnail),
+          };
+
+          await TrackPlayer.add(track);
+          await TrackPlayer.skip(0);
+          await TrackPlayer.play();
         } catch (error) {
           console.error("Error fetching song:", error);
         } finally {
@@ -126,30 +140,43 @@ export default function Home() {
   const handlePress = async (section, song, index) => {
     console.log("Section: ", section);
     if (section === "quick_picks") {
-      if (!userInfo) {
+      try {
+        await TrackPlayer.reset();
+        setCurrentSong(song);
+        setPlayingFrom("Home");
+        const newQueue = home?.quick_picks.slice(
+          index,
+          home?.quick_picks.length
+        );
+        setCurrentQueue(newQueue);
+
+        const tracks = newQueue.map((s) => ({
+          id: s.videoId,
+          url: `${process.env.EXPO_PUBLIC_STREAM_URL}/play?videoId=${
+            s.videoId
+          }&email=${userInfo?.email || ""}`,
+          title: s.title || "Unknown Title",
+          artist: s.author || "Unknown Artist",
+          artwork:
+            s.thumbnail?.url ||
+            s.thumbnail ||
+            "https://via.placeholder.com/150",
+        }));
+
+        await TrackPlayer.add(tracks);
+        await TrackPlayer.skip(0);
+        await TrackPlayer.play();
         await saveToRecentlyPlayed(song);
-      }
-      setCurrentSong(song);
-      setCurrentQueue(
-        home?.quick_picks.slice(index, home?.quick_picks.length - 1)
-      );
-      setIsSongLoading(true);
-      await TrackPlayer.reset();
-      const url = await playASongs(
-        song.videoId,
-        userInfo?.email,
-        song,
-        setCurrentSong,
-        song
-      );
-      if (url) {
-        console.log("URL: ", url);
-        setSongUrl(url);
+        if (userInfo) {
+          await handleRecentlyPlayed(userInfo?.email, song);
+        }
+        setIsPlaying(true);
         setIsSongLoading(false);
-        // setOpen(true);
-      } else {
-        console.log("Unable TO Fetch URL");
+        setOpen(true);
+      } catch (error) {
+        console.error("Error setting queue and playing song:", error);
         setIsSongLoading(false);
+        ToastAndroid.show("Error playing song", ToastAndroid.SHORT);
       }
     } else if (section === "playlist") {
       console.log("Getting Playlist...>", song.browseId);
@@ -157,7 +184,6 @@ export default function Home() {
       const results = await getPlaylistSongs(song.browseId);
       if (results) {
         setPlaylist(results);
-        // console.log(results);
         setIsPlaylistLoading(false);
         router.push({
           pathname: "/playlist/",

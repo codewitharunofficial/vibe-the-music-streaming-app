@@ -31,28 +31,22 @@ export const fetchHome = async (setIsLoading) => {
   }
 };
 
-export const playASongs = async (id, email, song, setCurrentSong, currentSong) => {
-  try {
-    console.log("Getting song with ID: ", id);
+// export const playASongs = async (id, email, song) => {
+//   try {
+//     console.log("Getting song with ID: ", id);
 
-    const { data } = await axios.post(
-      `${process.env.EXPO_PUBLIC_API}/api/song`,
-      {
-        id: id,
-        email: email,
-        song: song,
-      }
-    );
-    if (data) {
-      console.log(data);
-      setCurrentSong({ ...currentSong, thumbnail: data.song?.thumbnail[data.song.thumbnail?.length - 1]?.url });
-      return data.song.adaptiveFormats[data.song.adaptiveFormats?.length - 1]
-        ?.url;
-    }
-  } catch (error) {
-    console.error(error);
-  }
-};
+//     const { data } = await axios.post(
+//       `${process.env.EXPO_PUBLIC_API}/api/song`, { id: id }
+//     );
+//     if (data) {
+//       console.log(data);
+//       return data.song.adaptiveFormats[data.song.adaptiveFormats?.length - 1]
+//         ?.url;
+//     }
+//   } catch (error) {
+//     console.error(error);
+//   }
+// };
 
 export const getTrendings = async () => {
   const options = {

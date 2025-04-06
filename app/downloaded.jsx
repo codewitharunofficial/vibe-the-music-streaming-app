@@ -3,58 +3,36 @@ import {
   View,
   Text,
   FlatList,
-  Image,
-  TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
   Dimensions,
 } from "react-native";
 import { useSong } from "@/context/SongContext";
 import {
-  getFavourites,
-  getRecentlyPlayed,
-  removeFromFavourites,
-  saveToFavourites,
-  saveToRecentlyPlayed,
+  getDownloadedSongs,
 } from "@/constants/cachedData";
 import { usePlayer } from "@/context/PlayerContext";
 import { useUser } from "@/context/User";
-import { Ionicons } from "@expo/vector-icons";
-import { handleLiked } from "@/constants/apiCalls";
 import { TrackComponent } from "@/components/Component";
 
-const Favourites = () => {
-  const { setSongUrl } = useSong();
+const Downloaded = () => {
+  const { songUrl, setSongUrl } = useSong();
   const { setIsSongLoading } = useSong();
   const { setCurrentSong } = useSong();
-  const { open, setOpen } = useSong();
   const [loading, setLoading] = useState(false);
   const { setCurrentQueue } = usePlayer();
-  const [favorites, setFavorites] = useState([]);
+  const [downloaded, setDownloaded] = useState([]);
   const { userInfo } = useUser();
 
-  const getFav = async () => {
-    const data = await getFavourites();
-    setFavorites(data?.reverse());
-  };
+  const { height } = Dimensions.get("window");
 
-  const handleLike = async (song) => {
-    try {
-      const fav = await getFavourites();
-      if (fav.find((item) => item.videoId === song.videoId)) {
-        const newFav = await removeFromFavourites(song);
-        setFavorites(newFav?.reverse());
-        const data = await handleLiked(userInfo?.email, song);
-        setFavorites(data?.favourites?.reverse());
-        await saveToFavourites(data?.favourites);
-      }
-    } catch (error) {
-      console.log(error);
-    }
+  const getSaved = async () => {
+    const data = await getDownloadedSongs();
+    setDownloaded(data);
   };
 
   useEffect(() => {
-    getFav();
+    getSaved();
   }, []);
 
   return (
@@ -66,22 +44,24 @@ const Favourites = () => {
           color="white"
           style={{ marginTop: 20 }}
         />
-      ) : favorites.length > 0 ? (
+      ) : downloaded.length > 0 ? (
         <FlatList
-          data={favorites}
-          keyExtractor={(item, index) => index}
+          data={downloaded}
+          keyExtractor={(item) => item?.id.toString()}
           renderItem={({ item, index }) => (
             <TrackComponent
               item={item}
-              songs={favorites}
+              songs={downloaded}
               setCurrentQueue={setCurrentQueue}
               setCurrentSong={setCurrentSong}
               setIsSongLoading={setIsSongLoading}
               setSongUrl={setSongUrl}
               index={index}
               userInfo={userInfo}
-              onPress={handleLike}
-              playingFrom={"Favourites"}
+              onPress={() => {
+                return null;
+              }}
+              playingFrom={"Downloaded"}
             />
           )}
           // contentContainerStyle={{ flexDirection: "column-reverse" }}
@@ -90,7 +70,7 @@ const Favourites = () => {
           showsVerticalScrollIndicator={false}
         />
       ) : (
-        <Text style={styles.noResults}>No Favourite Songs Found.</Text>
+        <Text style={styles.noResults}>No Downloaded Songs Found.</Text>
       )}
     </View>
   );
@@ -136,4 +116,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Favourites;
+export default Downloaded;

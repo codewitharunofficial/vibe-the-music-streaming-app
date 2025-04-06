@@ -23,8 +23,8 @@ const PlaylistScreen = () => {
   const [playlistLoading, setPlaylistLoading] = useState(false);
 
   useEffect(() => {
-    setPlaylistLoading(true);
     const getPlaylists = async () => {
+      setPlaylistLoading(true);
       const data =
         JSON.parse(await AsyncStorage.getItem("user-playlists")) || [];
       setPlaylistLoading(false);
@@ -51,8 +51,6 @@ const PlaylistScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Your Playlists</Text>
-
       <TouchableOpacity
         style={styles.createButton}
         onPress={() => setModalVisible(true)}

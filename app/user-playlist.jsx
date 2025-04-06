@@ -7,6 +7,7 @@ import {
   Image,
   StyleSheet,
   ActivityIndicator,
+  ToastAndroid,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import TrackPlayer, { usePlaybackState } from "react-native-track-player";
@@ -14,33 +15,52 @@ import { useUser } from "@/context/User";
 import { playASongs } from "@/constants/apiCalls";
 import { usePlayer } from "@/context/PlayerContext";
 import { useSong } from "@/context/SongContext";
+import { saveToRecentlyPlayed } from "@/constants/cachedData";
 
 const UserPlaylistScreen = () => {
   const { playlist, userInfo } = useUser();
-  const { setCurrentQueue } = usePlayer();
-  const { setSongUrl, setCurrentSong, currentSong } = useSong();
+  const { setCurrentQueue, setIsPlaying, setPlayingFrom } = usePlayer();
+  const { setSongUrl, setCurrentSong, currentSong, setIsSongLoading } =
+    useSong();
 
   const playbackState = usePlaybackState();
 
   console.log(playlist);
 
-  const handlePlaySong = async (song) => {
-    const url = await playASongs(song.videoId, userInfo?.email, song, setCurrentSong, song);
-    if (url) {
-      setCurrentSong(song);
-      setSongUrl(url);
+  const play = async (item, index) => {
+    try {
+      setPlayingFrom("User's Playlist");
+      if (!userInfo) {
+        await saveToRecentlyPlayed(item);
+      }
+
+      setCurrentSong(item);
+      const newQueue = playlist.songs.slice(index, playlist.songs.length);
+      setCurrentQueue(newQueue);
+
       await TrackPlayer.reset();
-      await TrackPlayer.add({
-        id: song.videoId,
-        url: url,
-        title: song.title,
-        artist: song.author,
-        artwork: song.thumbnail?.url || song.thumbnail,
-      });
+      const tracks = newQueue.map((s) => ({
+        id: s.videoId,
+        url: `${process.env.EXPO_PUBLIC_STREAM_URL}/play?videoId=${
+          s.videoId
+        }&email=${userInfo?.email || ""}`,
+        title: s.title || "Unknown Title",
+        artist: s.author || "Unknown Artist",
+        artwork:
+          s.thumbnail?.url || s.thumbnail || "https://via.placeholder.com/150",
+      }));
+
+      await TrackPlayer.add(tracks);
+      await TrackPlayer.skip(0); // Play the first song in the queue
       await TrackPlayer.play();
-      setCurrentQueue(playlist.songs);
-    } else {
-      console.log("Error While Fetching Song URL");
+
+      setIsPlaying(true);
+      setIsSongLoading(false);
+      // setOpen(true);
+    } catch (error) {
+      console.error("Error setting queue and playing song:", error);
+      setIsSongLoading(false);
+      ToastAndroid.show("Error playing song", ToastAndroid.SHORT);
     }
   };
 
@@ -72,10 +92,10 @@ const UserPlaylistScreen = () => {
       <FlatList
         data={playlist.songs}
         keyExtractor={(item) => item.videoId}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <TouchableOpacity
             style={styles.songContainer}
-            onPress={() => handlePlaySong(item)}
+            onPress={() => play(item, index)}
           >
             <Image
               source={{ uri: item.thumbnail?.url || item.thumbnail }}

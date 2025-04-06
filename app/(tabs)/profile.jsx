@@ -38,7 +38,7 @@ const UserProfile = () => {
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: Constants.expoConfig?.extra?.googleSignIn?.androidClientId,
     clientId: Constants.expoConfig?.extra?.googleSignIn?.webClientId,
-    redirectUri: `com.codewitharun.vibe:/profile`,
+    redirectUri: `com.codewitharun.vibe:/(tabs)/profile`,
     scopes: ["profile", "email", "openid"],
     usePKCE: true,
   });
@@ -270,7 +270,7 @@ const UserProfile = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1C1C1C",
+    backgroundColor: "#2F1C6A",
     alignItems: "center",
     justifyContent: "center",
   },
