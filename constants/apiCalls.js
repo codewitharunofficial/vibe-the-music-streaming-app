@@ -168,26 +168,25 @@ export const retrieveRecentlyPlayed = async (email) => {
   }
 };
 
-export const fetchUserPlaylists = async (email, setPlaylists) => {
+export const fetchUserPlaylists = async (userId, setPlaylists) => {
   try {
     const { data } = await axios.get(
-      `${process.env.EXPO_PUBLIC_API}/api/playlists?email=${email}`
+      `${process.env.EXPO_PUBLIC_API}/api/playlists?id=${userId}`
     );
     if (data.success) {
       console.log(data);
       setPlaylists(data.playlists);
-      // return data.playlists;
     }
   } catch (error) {
     console.log(error);
   }
 };
 
-export const createNewPlaylist = async (email, name, setPlaylists) => {
+export const createNewPlaylist = async (id, name, setPlaylists) => {
   try {
     const { data } = await axios.post(
       `${process.env.EXPO_PUBLIC_API}/api/playlist/create`,
-      { playlistName: name, email: email }
+      { playlistName: name, id: id }
     );
     if (data.success) {
       console.log(data);
@@ -199,14 +198,25 @@ export const createNewPlaylist = async (email, name, setPlaylists) => {
   }
 };
 
-export const handleAddToPlaylist = async (email, name, song) => {
+export const handleAddToPlaylist = async (id, song) => {
   try {
     const { data } = await axios.post(
       `${process.env.EXPO_PUBLIC_API}/api/playlist/add-song`,
-      { playlistName: name, email: email, song: song }
+      { id: id, song: song }
     );
     if (data.success) {
       console.log(data);
+      const playlists = JSON.parse(await AsyncStorage.getItem("user-playlists")) || [];
+
+      if (playlists.length > 0) {
+        const updatedPlaylists = playlists.map((playlist) => {
+          if (playlist._id === id) {
+            return data.playlist;
+          }
+          return playlist;
+        });
+        await AsyncStorage.setItem("user-playlists", JSON.stringify(updatedPlaylists));
+      }
     }
   } catch (error) {
     console.log(error);

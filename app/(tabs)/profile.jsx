@@ -96,7 +96,7 @@ const UserProfile = () => {
         Alert.alert("Login Failed", data.message);
       }
     } catch (error) {
-      console.error("Login Error:", error);
+      console.error("Login Error:", error.message);
       setIsLoading(false);
       Alert.alert("Error", "Login failed. Please try again.");
     }
@@ -205,14 +205,6 @@ const UserProfile = () => {
 
             <TouchableOpacity
               style={styles.navButton}
-              onPress={() => router.navigate({ pathname: "/soon" })}
-            >
-              <MaterialIcons name="thumb-up" size={24} color="#32CD32" />
-              <Text style={styles.navText}>Recommended</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.navButton}
               onPress={() => router.navigate({ pathname: "/playlists" })}
             >
               <MaterialIcons name="playlist-play" size={24} color="#E600E6" />
@@ -287,8 +279,8 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    borderWidth: 2,
-    borderColor: "#1DB954",
+    borderWidth: 1,
+    borderColor: "#1C1C1C",
   },
 
   userName: {
@@ -296,9 +288,17 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#fff",
     marginBottom: 5,
+    marginTop: 5,
   },
 
-  userEmail: { fontSize: 16, color: "#bbb", marginBottom: 20 },
+  userEmail: {
+    fontSize: 16,
+    color: "royalblue",
+    marginBottom: 20,
+    textDecorationLine: "underline",
+    textDecorationStyle: "dashed",
+    textDecorationColor: "white",
+  },
 
   navButtons: { width: "100%", marginTop: 10 },
 

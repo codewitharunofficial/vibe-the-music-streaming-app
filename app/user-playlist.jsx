@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,13 @@ import {
   StyleSheet,
   ActivityIndicator,
   ToastAndroid,
+  Dimensions,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import TrackPlayer, { usePlaybackState } from "react-native-track-player";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import TrackPlayer, {
+  State,
+  usePlaybackState,
+} from "react-native-track-player";
 import { useUser } from "@/context/User";
 import { playASongs } from "@/constants/apiCalls";
 import { usePlayer } from "@/context/PlayerContext";
@@ -23,7 +27,10 @@ const UserPlaylistScreen = () => {
   const { setSongUrl, setCurrentSong, currentSong, setIsSongLoading } =
     useSong();
 
+  const [playlistPoster, setPlaylistPoster] = useState([]);
+
   const playbackState = usePlaybackState();
+  const { width, height } = Dimensions.get("window");
 
   console.log(playlist);
 
@@ -41,8 +48,8 @@ const UserPlaylistScreen = () => {
       await TrackPlayer.reset();
       const tracks = newQueue.map((s) => ({
         id: s.videoId,
-        url: `${process.env.EXPO_PUBLIC_STREAM_URL}/play?videoId=${
-          s.videoId
+        url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
+          s.videoId || s.id
         }&email=${userInfo?.email || ""}`,
         title: s.title || "Unknown Title",
         artist: s.author || "Unknown Artist",
@@ -79,16 +86,66 @@ const UserPlaylistScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.playlistTitle}>{playlist.name}</Text>
-        <TouchableOpacity style={styles.playAllButton} onPress={handlePlayAll}>
-          <Ionicons name="play-circle" size={24} color="white" />
-          <Text style={styles.playAllText}>Play All</Text>
+        <TouchableOpacity
+          style={{ marginBottom: 0, flexDirection: "row", flexWrap: "wrap" }}
+        >
+          <Image
+            source={{ uri: playlist.poster || playlist.songs[0].thumbnail }}
+            style={[
+              styles.thumbnail,
+              {
+                height: height * 0.25,
+                width: width - 40,
+                objectFit: "fill",
+                margin: 0,
+                borderRadius: 0,
+              },
+            ]}
+          />
         </TouchableOpacity>
       </View>
 
-      {/* Song List */}
+      <View
+        style={{
+          width: width,
+          height: 50,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-around",
+          alignSelf: "center",
+          paddingHorizontal: 20,
+        }}
+      >
+        <TouchableOpacity style={styles.playAllButton} onPress={handlePlayAll}>
+          <Text style={[styles.playAllText, { color: "#000" }]}>Play All</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.playAllButton,
+            ,
+            { backgroundColor: "yellow", flexDirection: "row", gap: 3 },
+          ]}
+          onPress={handlePlayAll}
+        >
+          <MaterialIcons
+            name={playlist?.type === "Private" ? "public" : "publiv-off"}
+            size={20}
+            color={"#000"}
+          />
+          <Text style={[styles.playAllText, { color: "#000" }]}>
+            {playlist?.type === "Private" ? "Public" : "Private"}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.playAllButton, { backgroundColor: "skyblue" }]}
+          onPress={handlePlayAll}
+        >
+          <Text style={[styles.playAllText, { color: "#000" }]}>Update</Text>
+        </TouchableOpacity>
+      </View>
+
       <FlatList
         data={playlist.songs}
         keyExtractor={(item) => item.videoId}
@@ -107,10 +164,31 @@ const UserPlaylistScreen = () => {
               </Text>
               <Text style={styles.songArtist}>{item.author?.slice(0, 20)}</Text>
             </View>
-            {currentSong && currentSong.videoId === item.videoId ? (
-              <Ionicons name="pause" size={24} color="white" />
+            {(playbackState.state === State.Loading ||
+              playbackState.state === State.Buffering) &&
+            currentSong.videoId === item.videoId ? (
+              <ActivityIndicator size="small" color="white" />
             ) : (
-              <Ionicons name="play" size={24} color="white" />
+              <TouchableOpacity
+                onPress={() => {
+                  if (currentSong?.videoId === item.videoId) {
+                    TrackPlayer.play();
+                  } else {
+                    play(item, index);
+                  }
+                }}
+              >
+                <Ionicons
+                  name={
+                    currentSong?.videoId === item.videoId &&
+                    playbackState.state === State.Playing
+                      ? "pause"
+                      : "play"
+                  }
+                  size={24}
+                  color="white"
+                />
+              </TouchableOpacity>
             )}
           </TouchableOpacity>
         )}
@@ -126,11 +204,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#121212",
     padding: 20,
+    flexDirection: "column",
+    justifyContent: "center",
+    gap: 10,
   },
   header: {
     alignItems: "center",
     marginBottom: 20,
-    paddingVertical: 20,
+    paddingVertical: 0,
     backgroundColor: "rgba(255, 255, 255, 0.05)",
     borderRadius: 10,
   },

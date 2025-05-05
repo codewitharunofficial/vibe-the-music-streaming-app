@@ -248,9 +248,14 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
         onClose();
       }}
     >
-      <ModalContent style={styles.modalContainer}>
+      <ImageBackground
+        source={{ uri: currentSong.artwork || currentSong.thumbnail }}
+        style={{ height: height * 0.5, paddingTop: 20, padding: 10 }}
+        blurRadius={10}
+        resizeMode="cover"
+      >
         <View style={styles.queueHeader}>
-          <Text style={styles.title}>Queue</Text>
+          <Text style={styles.title}>Current Queue</Text>
         </View>
 
         <FlatList
@@ -267,7 +272,8 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
                 <Text style={styles.songTitle}>{item.title?.slice(0, 20)}</Text>
                 <Text style={styles.artist}>{item.author?.slice(0, 20)}</Text>
               </View>
-              {item?.videoId === currentSong.videoId && (
+              {(item?.videoId || item.id) ===
+                (currentSong.videoId || currentSong.id) && (
                 <MaterialIcons
                   name="equalizer"
                   size={24}
@@ -290,7 +296,7 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
           )}
           contentContainerStyle={{ paddingBottom: 20 }}
         />
-      </ModalContent>
+      </ImageBackground>
       <SongOptionsModal
         isVisible={modalVisible}
         onClose={close}
@@ -323,6 +329,7 @@ const NowPlayingScreen = React.memo(
     const [isDownloading, setIsDownloading] = useState(false);
     const [downloadProgress, setDownloadProgess] = useState(0);
     const [downloaded, setDownloaded] = useState([]);
+    const [currentDownload, setCurrentDownload] = useState(null);
 
     // 🎯 Handle Track Change and Sync UI
     const handleTrackChange = useCallback(async () => {
@@ -334,8 +341,10 @@ const NowPlayingScreen = React.memo(
         if (!activeTrack) return;
 
         const newSongIndex = currentQueue.findIndex(
-          (s) => s.videoId === activeTrack.id
+          (s) => (s.videoId || s.id) === activeTrack.id
         );
+
+        console.log("New song Index: ", newSongIndex);
 
         if (newSongIndex !== -1 && newSongIndex !== currentIndex) {
           setCurrentIndex(newSongIndex);
@@ -480,7 +489,7 @@ const NowPlayingScreen = React.memo(
       try {
         const newRepeat = !repeat;
         await TrackPlayer.setRepeatMode(
-          newRepeat ? RepeatMode.Queue : RepeatMode.Off
+          newRepeat ? RepeatMode.Track : RepeatMode.Off
         );
         setRepeat(newRepeat);
       } catch (error) {
@@ -546,17 +555,17 @@ const NowPlayingScreen = React.memo(
 
     useEffect(() => {
       getSaved();
-    }, [downloadAndSaveSong, currentSong, handleTrackChange]);
+    }, [downloadAndSaveSong, currentSong, handleTrackChange, currentDownload]);
 
     if (!currentSong) return null;
 
     return (
       <BottomModal
         visible={isVisible}
-        onTouchOutside={() => setIsVisible(false)}
         modalAnimation={new SlideAnimation({ slideFrom: "bottom" })}
         swipeDirection={["down"]}
-        swipeThreshold={200}
+        swipeThreshold={1000}
+        onTouchOutside={() => {}}
         onSwipeRelease={() => !showQueue && setIsVisible(false)}
       >
         <ImageBackground
@@ -564,10 +573,11 @@ const NowPlayingScreen = React.memo(
             uri:
               currentSong.thumbnail?.url ||
               currentSong.thumbnail ||
-              currentSong.artwork,
+              currentSong.artwork ||
+              "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
           }}
           style={{ height: height * 0.93, paddingTop: 50, padding: 10 }}
-          blurRadius={10} // Apply blur effect
+          blurRadius={10}
           resizeMode="cover"
         >
           <Text
@@ -580,76 +590,98 @@ const NowPlayingScreen = React.memo(
               uri:
                 currentSong.thumbnail?.url ||
                 currentSong.thumbnail ||
-                currentSong.artwork,
+                currentSong.artwork ||
+                "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
             }}
             style={styles.nowPlayingImage}
             resizeMode="cover"
           />
           <Text style={styles.nowPlayingTitle} numberOfLines={1}>
-            {currentSong.title?.slice(0, 30) || "Unknown Title"}
+            {currentSong.title || "Unknown Title"}
           </Text>
           <Text style={styles.nowPlayingArtist} numberOfLines={1}>
-            {currentSong.author?.slice(0, 30) ||
-              currentSong.artist?.slice(0, 30) ||
-              "Unknown Artist"}
+            {currentSong.author || currentSong.artist || "Unknown Artist"}
           </Text>
-          <View style={[styles.nowPlayingControls, { paddingHorizontal: 10 }]}>
-            <TouchableOpacity
-              style={[styles.shareButton, { margin: 10, alignItems: "center" }]}
-              onPress={() => shareSong(currentSong)}
+          {playingFrom !== "Local" && (
+            <View
+              style={[styles.nowPlayingControls, { paddingHorizontal: 10 }]}
             >
-              <AntDesign name="sharealt" size={24} color="#fff" />
-            </TouchableOpacity>
-            <View style={styles.nowPlayingControls}>
               <TouchableOpacity
-                disabled={isDownloading || isDownloaded}
                 style={[
                   styles.shareButton,
                   { margin: 10, alignItems: "center" },
                 ]}
-                onPress={async () => {
-                  setIsDownloading(true);
-                  await downloadAndSaveSong(currentSong, setDownloadProgess);
-                  setIsDownloading(false);
-                  setIsDownloaded(true);
-                }}
+                onPress={() => shareSong(currentSong)}
               >
-                {isDownloading ? (
-                  <View
-                    style={{
-                      alignItems: "center",
-                      padding: 8,
-                      borderRadius: 50,
-                      borderWidth: 0.5,
-                      borderColor: "white",
-                    }}
-                  >
-                    <Text style={{ fontSize: 12, color: "white" }}>
-                      {downloadProgress}%
-                    </Text>
-                  </View>
-                ) : downloaded.find(
-                    (s) => s.id === (currentSong.id || currentSong.videoId)
+                <AntDesign name="sharealt" size={24} color="#fff" />
+              </TouchableOpacity>
+              <View style={styles.nowPlayingControls}>
+                <TouchableOpacity
+                  disabled={
+                    (isDownloading || isDownloaded) &&
+                    (currentDownload?.id || currentDownload?.videoId) ===
+                      (currentSong?.id || currentSong?.videoId)
+                  }
+                  style={[
+                    styles.shareButton,
+                    { margin: 10, alignItems: "center" },
+                  ]}
+                  onPress={async () => {
+                    setIsDownloading(true);
+                    await downloadAndSaveSong(
+                      currentSong,
+                      setDownloadProgess,
+                      setCurrentDownload
+                    );
+                    ToastAndroid.show("Song Downloaded", ToastAndroid.SHORT);
+                    setIsDownloading(false);
+                    setIsDownloaded(true);
+                  }}
+                >
+                  {isDownloading &&
+                  (currentDownload?.id || currentDownload?.videoId) ===
+                    (currentSong?.id || currentSong?.videoId) ? (
+                    <View
+                      style={{
+                        alignItems: "center",
+                        padding: 8,
+                        borderRadius: 50,
+                        borderWidth: 0.5,
+                        borderColor: "white",
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, color: "white" }}>
+                        {downloadProgress}%
+                      </Text>
+                    </View>
+                  ) : downloaded.find(
+                      (s) => s.id === (currentSong.id || currentSong.videoId)
+                    ) ? (
+                    <FontAwesome
+                      name="check-circle"
+                      size={25}
+                      color={"green"}
+                      style={{ alignSelf: "center" }}
+                    />
+                  ) : (
+                    <Feather name="download" size={24} color="#fff" />
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.miniPlayerIcon}
+                  onPress={handleLike}
+                >
+                  {favorites.find(
+                    (item) => item.videoId === currentSong?.videoId
                   ) ? (
-                  <FontAwesome name="check-circle" size={24} color={"green"} />
-                ) : (
-                  <Feather name="download" size={24} color="#fff" />
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.miniPlayerIcon}
-                onPress={handleLike}
-              >
-                {favorites.find(
-                  (item) => item.videoId === currentSong?.videoId
-                ) ? (
-                  <Ionicons name="heart" size={24} color="#FF4D67" />
-                ) : (
-                  <Ionicons name="heart-outline" size={24} color="#fff" />
-                )}
-              </TouchableOpacity>
+                    <Ionicons name="heart" size={24} color="#FF4D67" />
+                  ) : (
+                    <Ionicons name="heart-outline" size={24} color="#fff" />
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          )}
           <View style={styles.sliderContainer}>
             <Text style={styles.timeText}>{formatTime(position)}</Text>
             <Slider
@@ -773,6 +805,20 @@ const MiniPlayer = ({
     getFav();
   }, [userInfo, handleLike]);
 
+  const playPause = useCallback(async () => {
+    try {
+      if (playbackState.state === State.Playing) {
+        await TrackPlayer.pause();
+        setIsPlaying(false);
+      } else {
+        await TrackPlayer.play();
+        setIsPlaying(true);
+      }
+    } catch (error) {
+      console.error("Play/pause error:", error);
+    }
+  }, [playbackState.state]);
+
   if (!song) return null;
 
   return (
@@ -784,7 +830,12 @@ const MiniPlayer = ({
       ]}
     >
       <Image
-        source={{ uri: song.thumbnail || song.artwork }}
+        source={{
+          uri:
+            song.thumbnail ||
+            song.artwork ||
+            "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
+        }}
         style={styles.miniPlayerImage}
       />
       <View style={styles.miniPlayerInfo}>
@@ -792,7 +843,7 @@ const MiniPlayer = ({
           {song.title?.slice(0, 30)}
         </Text>
         <Text numberOfLines={1} style={styles.miniPlayerArtist}>
-          {song.author?.slice(0, 30)}
+          {song.author?.slice(0, 30) || song.artist?.slice(0, 30)}
         </Text>
       </View>
       <View
@@ -804,40 +855,25 @@ const MiniPlayer = ({
             handleLike();
           }}
         >
-          {favorites.find((item) => item.videoId === currentSong.videoId) ? (
+          {favorites.find(
+            (item) => item.videoId === (currentSong.videoId || currentSong.id)
+          ) ? (
             <Ionicons name="heart" size={24} color={"#FF4D67"} />
           ) : (
             <Ionicons name="heart-outline" size={24} color={"#fff"} />
           )}
         </TouchableOpacity>
-        {playbackState.state !== State.Playing ? (
-          <TouchableOpacity
-            style={styles.miniPlayerIcon}
-            onPress={async () => {
-              await TrackPlayer.play();
-              setIsPlaying(true);
-            }}
-          >
-            <Ionicons name="play" size={24} color="white" />
+        {isSongLoading || playbackState.state === State.Buffering ? (
+          <ActivityIndicator size={24} color="white" />
+        ) : (
+          <TouchableOpacity onPress={playPause}>
+            <Ionicons
+              name={playbackState.state === State.Playing ? "pause" : "play"}
+              size={24}
+              color="white"
+            />
           </TouchableOpacity>
-        ) : playbackState.state === State.Playing ? (
-          <TouchableOpacity
-            style={styles.miniPlayerIcon}
-            onPress={async () => {
-              await TrackPlayer.pause();
-              setIsPlaying(false);
-            }}
-          >
-            <Ionicons name="pause" size={24} color="white" />
-          </TouchableOpacity>
-        ) : playbackState.state === State.Buffering ||
-          playbackState.state === State.Loading ? (
-          <ActivityIndicator
-            size={24}
-            color={"white"}
-            style={styles.miniPlayerIcon}
-          />
-        ) : null}
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -868,33 +904,40 @@ const TrackComponent = ({
       Animated.loop(
         Animated.timing(rotateAnim, {
           toValue: 1,
-          duration: 3000, // Adjust speed of rotation
-          easing: Easing.linear, // Smooth infinite rotation
+          duration: 3000,
+          easing: Easing.linear,
           useNativeDriver: true,
         })
       ).start();
     } else {
-      rotateAnim.setValue(0); // Reset rotation when not playing
+      rotateAnim.setValue(0);
     }
-  }, [currentSong]);
+  }, [currentSong, item]);
 
-  // Interpolating rotation
   const spin = rotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["0deg", "360deg"],
   });
 
   const getFav = async () => {
-    const fav = JSON.parse(await AsyncStorage.getItem("favourites")) || [];
-    const song = fav.find((e) => e.videoId === item.videoId);
-    if (song) {
-      const indexToremove = fav.findIndex((e) => e.videoId === item.videoId);
-      fav.splice(indexToremove, 1);
-      setFavorites(fav);
-    }
-    const data = await getFavourites();
-    if (data) {
-      setFavorites(data);
+    try {
+      const fav = JSON.parse(await AsyncStorage.getItem("favourites")) || [];
+      const song = fav.find(
+        (e) => (e.videoId || e.id) === (item.videoId || item.id)
+      );
+      if (song) {
+        const indexToremove = fav.findIndex(
+          (e) => (e.videoId || e.id) === (item.videoId || item.id)
+        );
+        fav.splice(indexToremove, 1);
+        setFavorites(fav);
+      }
+      const data = await getFavourites();
+      if (data) {
+        setFavorites(data);
+      }
+    } catch (error) {
+      console.error("Error fetching favorites:", error);
     }
   };
 
@@ -909,32 +952,53 @@ const TrackComponent = ({
       await TrackPlayer.reset();
       setCurrentSong(item);
       setPlayingFrom(playingFrom);
-      await saveToRecentlyPlayed(item);
 
-      if (userInfo) {
-        await handleRecentlyPlayed(userInfo?.email, item);
-      }
+      const track = {
+        id: item.videoId || item.id,
+        url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
+          item.videoId || item.id
+        }&email=${userInfo?.email || ""}`,
+        title: item.title || "Unknown Title",
+        artist: item.author || "Unknown Artist",
+        artwork:
+          item.thumbnail?.url ||
+          item.thumbnail ||
+          item.artwork ||
+          "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
+      };
+      await TrackPlayer.add(track);
+      await TrackPlayer.skip(0);
+      await TrackPlayer.play();
+      setSongUrl(track.url);
+      setCurrentSong(track);
 
       const newQueue = songs.slice(index, songs.length);
       setCurrentQueue(newQueue);
 
       const tracks = newQueue.map((s) => ({
-        id: s.videoId,
-        url: s?.uri || `${process.env.EXPO_PUBLIC_STREAM_URL}/play?videoId=${
-          s.videoId
-        }&email=${userInfo?.email || ""}`,
-        title: s.title || "Unknown Title",
-        artist: s.author || "Unknown Artist",
-        artwork: s.thumbnail?.url || s.thumbnail,
+        id: s.videoId || s.id,
+        url:
+          s.uri ||
+          `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
+            s.videoId || s.id
+          }&email=${userInfo?.email || ""}`,
+        title: s.title || s.filename || "Unknown Title",
+        artist: s.author || s.artist || "Unknown Artist",
+        artwork:
+          s.thumbnail?.url ||
+          s.thumbnail ||
+          s.artwork ||
+          "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
       }));
 
-      await TrackPlayer.add(tracks);
-      await TrackPlayer.skip(0); // Play the first song in the queue
-      await TrackPlayer.play();
-
+      await TrackPlayer.setQueue(tracks);
       setIsPlaying(true);
       setIsSongLoading(false);
-      // setOpen(true);
+      await saveToRecentlyPlayed(item);
+
+      if (userInfo?.email) {
+        await handleRecentlyPlayed(userInfo.email, item);
+      }
     } catch (error) {
       console.error("Error setting queue and playing song:", error);
       setIsSongLoading(false);
@@ -942,41 +1006,52 @@ const TrackComponent = ({
     }
   };
 
-  // console.log("Current Song: ", currentSong);
-
   return (
-    <TouchableOpacity onPress={async () => play()} style={styles.trackItem}>
+    <TouchableOpacity onPress={play} style={styles.trackItem}>
       <View style={{ flexDirection: "row", flex: 0.8 }}>
         <Image
-          source={{ uri: item?.thumbnail[0]?.url || item.thumbnail }}
+          source={{
+            uri:
+              (typeof item.thumbnail === "object" && item.thumbnail?.url) ||
+              item.thumbnail ||
+              item.artwork ||
+              "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
+          }}
           style={styles.trackImage}
         />
         <View style={styles.trackDetails}>
           <Text numberOfLines={1} style={styles.trackTitle}>
-            {item.title?.slice(0, 20)}...
+            {item.title?.slice(0, 20) ||
+              item.filename?.slice(0, 30) ||
+              "Unknown Title"}
+            ...
           </Text>
           <Text numberOfLines={1} style={styles.trackArtist}>
-            {item.author?.slice(0, 20) || item.artist?.slice(0, 20) || "Unknown"}
+            {item.author || item.artist || "Unknown"}
           </Text>
         </View>
       </View>
-      {(currentSong?.id || currentSong?.videoId) ===
+      {(currentSong?.videoId || currentSong?.id) ===
         (item?.videoId || item?.id) && (
         <Animated.View style={{ transform: [{ rotate: spin }] }}>
           <FontAwesome5 name="compact-disc" size={24} color={"#181A3Aff"} />
         </Animated.View>
       )}
-      <TouchableOpacity
-        onPress={async () => onPress(item)}
-        style={{ marginRight: 10 }}
-      >
-        {favorites.find((song) => song.videoId === item.videoId) && (
-          <Ionicons name="heart" size={24} color={"#FF4D67"} />
-        )}
-      </TouchableOpacity>
+      {playingFrom !== "Local" && (
+        <TouchableOpacity
+          onPress={() => onPress(item)}
+          style={{ marginRight: 10 }}
+        >
+          {favorites.find(
+            (song) => (song.videoId || song.id) === (item.videoId || item.id)
+          ) && <Ionicons name="heart" size={24} color={"#FF4D67"} />}
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 };
+
+// export default TrackComponent;
 
 const styles = StyleSheet.create({
   cardContainer: {
@@ -1162,7 +1237,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#555",
     paddingBottom: 10,
-    marginBottom: 10,
   },
   title: {
     fontSize: 18,

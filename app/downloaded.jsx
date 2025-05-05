@@ -47,7 +47,7 @@ const Downloaded = () => {
       ) : downloaded.length > 0 ? (
         <FlatList
           data={downloaded}
-          keyExtractor={(item) => item?.id.toString()}
+          keyExtractor={(item, index) => index}
           renderItem={({ item, index }) => (
             <TrackComponent
               item={item}

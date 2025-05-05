@@ -47,6 +47,15 @@ export const trackPlayerService = async function () {
     }
   });
 
+  TrackPlayer.addEventListener(Event.RemoteSeek, async ({position}) => {
+    try {
+      await TrackPlayer.seekTo(position);
+      console.log("RemoteSeek triggered to position:", position);
+    } catch (error) {
+      console.log("Error While Seeking Reomtely: ", error);
+    }
+  })
+
   // Handle track changes to emit an event
   TrackPlayer.addEventListener(
     Event.PlaybackActiveTrackChanged,

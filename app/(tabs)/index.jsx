@@ -99,7 +99,7 @@ export default function Home() {
 
           const track = {
             id: song.videoId,
-            url: `${process.env.EXPO_PUBLIC_STREAM_URL}/play?videoId=${
+            url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
               song.videoId
             }&email=${userInfo?.email || ""}`,
             title: song.title || "Unknown Title",
@@ -107,6 +107,7 @@ export default function Home() {
             artwork: decodeURIComponent(queryParams.thumbnail),
           };
 
+          await TrackPlayer.reset();
           await TrackPlayer.add(track);
           await TrackPlayer.skip(0);
           await TrackPlayer.play();
@@ -144,6 +145,24 @@ export default function Home() {
         await TrackPlayer.reset();
         setCurrentSong(song);
         setPlayingFrom("Home");
+        const track = {
+          id: song.videoId,
+          url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
+            song.videoId
+          }&email=${userInfo?.email || ""}`,
+          title: song.title || "Unknown Title",
+          artist: song.author || "Unknown Artist",
+          artwork: song.thumbnail?.url || song.thumbnail,
+        };
+        await TrackPlayer.add(track);
+        await TrackPlayer.skip(0);
+        await TrackPlayer.play();
+        setSongUrl(track.url);
+        setCurrentSong(track);
+
+        ToastAndroid.show("Song Is Added To The Queue", ToastAndroid.SHORT);
+        setIsPlaying(true);
+
         const newQueue = home?.quick_picks.slice(
           index,
           home?.quick_picks.length
@@ -152,7 +171,7 @@ export default function Home() {
 
         const tracks = newQueue.map((s) => ({
           id: s.videoId,
-          url: `${process.env.EXPO_PUBLIC_STREAM_URL}/play?videoId=${
+          url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
             s.videoId
           }&email=${userInfo?.email || ""}`,
           title: s.title || "Unknown Title",
@@ -163,14 +182,12 @@ export default function Home() {
             "https://via.placeholder.com/150",
         }));
 
-        await TrackPlayer.add(tracks);
-        await TrackPlayer.skip(0);
-        await TrackPlayer.play();
+        await TrackPlayer.setQueue(tracks);
         await saveToRecentlyPlayed(song);
         if (userInfo) {
           await handleRecentlyPlayed(userInfo?.email, song);
         }
-        setIsPlaying(true);
+
         setIsSongLoading(false);
         setOpen(true);
       } catch (error) {
@@ -203,18 +220,6 @@ export default function Home() {
 
   const handleLike = () => {
     console.log("Like");
-  };
-
-  const routeToLike = () => {
-    if (userInfo) {
-      router.push("/recents/");
-    } else {
-      Alert.alert(
-        "Warning",
-        "You are not logged in and so all the tracks in the Liked Songs List Are Saved Locally. If you remove or re-install Vibe in future, you'll lose all of your data. To avoid Please Logging Or Register"
-      );
-      router.push("/recents");
-    }
   };
 
   const routeToRecents = async () => {
@@ -253,9 +258,9 @@ export default function Home() {
           onPress={() => routeToRecents()}
         />
         <QuickAccessButton
-          title={"Favourites"}
-          iconName={"heart"}
-          onPress={() => router.navigate({ pathname: "/favourites" })}
+          title={"Local songs"}
+          iconName={"folder"}
+          onPress={() => router.navigate({ pathname: "/local" })}
         />
       </View>
       {home && !isLoading ? (

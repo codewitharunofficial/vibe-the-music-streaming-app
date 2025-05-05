@@ -21,8 +21,7 @@
       "env": {
         "EXPO_PUBLIC_API_KEY_1": "b1c26628e0msh3fbbf13ea24b4abp184561jsna2ebae86e910",
         "EXPO_PUBLIC_API_HOST_1": "youtube-music-api3.p.rapidapi.com",
-        "EXPO_PUBLIC_API": "https://vibe-music-eight.vercel.app",
-        "EXPO_PUBLIC_STREAM_URL": "https://stream-vibe-n3yz.onrender.com"
+        "EXPO_PUBLIC_API": "https://vibe-music-eight.vercel.app"
       },
       "channel": "preview"
     },
@@ -36,8 +35,7 @@
       "env": {
         "EXPO_PUBLIC_API_KEY_1": "b1c26628e0msh3fbbf13ea24b4abp184561jsna2ebae86e910",
         "EXPO_PUBLIC_API_HOST_1": "youtube-music-api3.p.rapidapi.com",
-        "EXPO_PUBLIC_API": "https://vibe-music-eight.vercel.app",
-        "EXPO_PUBLIC_STREAM_URL": "https://stream-vibe-n3yz.onrender.com"
+        "EXPO_PUBLIC_API": "https://vibe-music-eight.vercel.app"
       },
       "channel": "production"
     }

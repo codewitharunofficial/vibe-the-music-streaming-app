@@ -77,13 +77,13 @@ export default function RootLayoutNav() {
           Capability.SeekTo,
         ],
         stopWithApp: true,
-        android: { appKilledPlaybackBehavior: AppKilledPlaybackBehavior.ContinuePlayback },
+        android: { appKilledPlaybackBehavior: AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification },
         waitForBuffer: true
       });
       console.log("TrackPlayer options updated");
 
-      await TrackPlayer.setRepeatMode(RepeatMode.Off);
-      console.log("Repeat mode set to Off");
+      await TrackPlayer.setRepeatMode(RepeatMode.Queue);
+      console.log("Repeat mode set to Queue");
 
       const track = await TrackPlayer.getActiveTrack();
       if (track) {
@@ -147,7 +147,7 @@ export default function RootLayoutNav() {
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="recents" options={{ headerShown: false }} />
-          <Stack.Screen name="trendings" options={{ headerShown: false }} />
+
           <Stack.Screen name="playlist" options={{ headerShown: false }} />
           <Stack.Screen name="album" options={{ headerShown: false }} />
           <Stack.Screen
@@ -173,6 +173,10 @@ export default function RootLayoutNav() {
           <Stack.Screen
             name="downloaded"
             options={{ headerShown: true, headerTitle: `Downloaded`, headerTitleStyle: { color: headerColor } }}
+          />
+          <Stack.Screen
+            name="local"
+            options={{ headerShown: true, headerTitle: `Local-Songs`, headerTitleStyle: { color: headerColor } }}
           />
         </Stack>
         <ModalPortal />

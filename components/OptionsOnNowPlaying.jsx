@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Modal,
   ActivityIndicator,
+  Image,
+  Dimensions,
 } from "react-native";
 import { AntDesign, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useUser } from "@/context/User";
@@ -32,6 +34,8 @@ const SongOptionsModal = ({
   const { currentIndex, setCurrentIndex } = usePlayer();
   const { currentSong, setCurrentSong } = useSong();
   const [selectedPlaylist, setSelectedPlaylist] = useState("");
+
+  const { width, height } = Dimensions.get("window");
 
   const handleRemove = async (index) => {
     const queue = currentQueue;
@@ -128,7 +132,6 @@ const SongOptionsModal = ({
         </View>
       </ModalBase>
 
-      {/* Playlist Selection Modal */}
       <ModalBase
         isVisible={isPlaylistModalVisible}
         onBackdropPress={() => setPlaylistModalVisible(false)}
@@ -144,11 +147,11 @@ const SongOptionsModal = ({
             keyExtractor={(item) => item.name}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={styles.optionButton}
+                style={[styles.optionButton, { width: width }]}
                 onPress={async () => {
                   setIsAddingSong(true);
                   setSelectedPlaylist(item.name);
-                  await handleAddToPlaylist(userInfo?.email, item.name, song);
+                  await handleAddToPlaylist(item?._id, song);
                   setIsAddingSong(false);
                   setPlaylistModalVisible(false);
                   onClose();
@@ -157,7 +160,10 @@ const SongOptionsModal = ({
                 {isAddingSong && item.name === selectedPlaylist ? (
                   <ActivityIndicator size={"small"} color={"green"} />
                 ) : (
-                  <Ionicons name="musical-notes" size={24} color="white" />
+                  <Image
+                    source={{ uri: item.poster || item.songs[0].thumbnail }}
+                    style={{ width: 50, height: 50, borderRadius: 50 }}
+                  />
                 )}
                 <Text style={styles.optionText}>{item.name}</Text>
               </TouchableOpacity>

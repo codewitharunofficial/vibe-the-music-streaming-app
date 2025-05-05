@@ -90,7 +90,7 @@ export const removeFromFavourites = async (song) => {
       if (itemIndex !== -1) {
         
         list.splice(itemIndex, 1);
-        
+
         await AsyncStorage.setItem('favourites', JSON.stringify(list));
         console.log("Updated favourites: ", list);
       }
@@ -117,12 +117,14 @@ export const checkIfLoggedIn = async () => {
 };
 
 
-export const downloadAndSaveSong = async (song, setProgress) => {
+export const downloadAndSaveSong = async (song, setProgress, setCurrentDownload) => {
   try {
 
-    const songUrl = await playASongs(song.videoId || song.id);
+    const songUrl = await playASongs(song?.videoId || song?.id);
 
     console.log("Downloading Song...", song);
+
+    setCurrentDownload(song);
 
     const { status } = await MediaLibrary.requestPermissionsAsync();
     if (status !== 'granted') {
@@ -155,6 +157,8 @@ export const downloadAndSaveSong = async (song, setProgress) => {
 
       await AsyncStorage.setItem('downloadedSongs', JSON.stringify(newSongs));
       console.log("Song Downloaded and Saved");
+      setProgress(0);
+      setCurrentDownload(null);
       return uri;
     }
 

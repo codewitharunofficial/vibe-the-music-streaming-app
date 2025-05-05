@@ -6,6 +6,7 @@ import {
   FlatList,
   StyleSheet,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import CreatePlaylistModal from "@/components/Create-Playlist";
@@ -31,8 +32,9 @@ const PlaylistScreen = () => {
 
       if (data.length > 0) {
         setUserPlaylist(data);
+        setPlaylistLoading(false);
       } else {
-        await fetchUserPlaylists(userInfo?.email, setUserPlaylist);
+        await fetchUserPlaylists(userInfo?._id, setUserPlaylist);
         await AsyncStorage.setItem(
           "user-playlists",
           JSON.stringify(userPlaylist)
@@ -45,7 +47,7 @@ const PlaylistScreen = () => {
 
   const handleCreatePlaylist = async (name) => {
     setLoading(true);
-    await createNewPlaylist(userInfo?.email, name, setUserPlaylist);
+    await createNewPlaylist(userInfo?._id, name, setUserPlaylist);
     setLoading(false);
   };
 
@@ -75,9 +77,22 @@ const PlaylistScreen = () => {
                 });
               }}
             >
-              <Ionicons name="musical-notes" size={24} color="white" />
-              <Text style={styles.playlistName}>{item.name}</Text>
-              <Text style={styles.songCount}>{item.songs.length} songs</Text>
+              <Image
+                source={{ uri: item.poster || item.songs[0].thumbnail }}
+                style={{ width: 50, height: 50, borderRadius: 50 }}
+              />
+              <View
+                style={{
+                  flexDirection: "column",
+                  gap: 5,
+                  alignItems: "flex-start",
+                  justifyContent: "center",
+                  padding: 10,
+                }}
+              >
+                <Text style={styles.playlistName}>{item.name}</Text>
+                <Text style={styles.songCount}>{item.songs.length} songs</Text>
+              </View>
             </TouchableOpacity>
           )}
           ListEmptyComponent={
@@ -128,7 +143,7 @@ const styles = StyleSheet.create({
   playlistItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 15,
+    padding: 10,
     backgroundColor: "#282828",
     borderRadius: 10,
     marginBottom: 10,
@@ -137,7 +152,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "white",
     flex: 1,
-    marginLeft: 10,
   },
   songCount: {
     fontSize: 14,
