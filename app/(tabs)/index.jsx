@@ -258,7 +258,7 @@ export default function Home() {
           onPress={() => routeToRecents()}
         />
         <QuickAccessButton
-          title={"Local songs"}
+          title={"Local Songs"}
           iconName={"folder"}
           onPress={() => router.navigate({ pathname: "/local" })}
         />

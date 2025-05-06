@@ -16,18 +16,17 @@ import TrackPlayer, {
   usePlaybackState,
 } from "react-native-track-player";
 import { useUser } from "@/context/User";
-import { playASongs } from "@/constants/apiCalls";
+import { playASongs, updateUserPlaylist } from "@/constants/apiCalls";
 import { usePlayer } from "@/context/PlayerContext";
 import { useSong } from "@/context/SongContext";
 import { saveToRecentlyPlayed } from "@/constants/cachedData";
 
 const UserPlaylistScreen = () => {
-  const { playlist, userInfo } = useUser();
+  const { playlist, userInfo, setPlaylist } = useUser();
   const { setCurrentQueue, setIsPlaying, setPlayingFrom } = usePlayer();
   const { setSongUrl, setCurrentSong, currentSong, setIsSongLoading } =
     useSong();
-
-  const [playlistPoster, setPlaylistPoster] = useState([]);
+  const [playlistName, setPlaylistName] = useState(playlist.name);
 
   const playbackState = usePlaybackState();
   const { width, height } = Dimensions.get("window");
@@ -36,7 +35,7 @@ const UserPlaylistScreen = () => {
 
   const play = async (item, index) => {
     try {
-      setPlayingFrom("User's Playlist");
+      setPlayingFrom(playlistName);
       if (!userInfo) {
         await saveToRecentlyPlayed(item);
       }
@@ -74,14 +73,35 @@ const UserPlaylistScreen = () => {
   const handlePlayAll = async () => {
     await TrackPlayer.reset();
     const tracks = playlist.songs.map((song) => ({
-      id: song.videoId,
+      id: song.videoId || song.id,
       url: song.url,
       title: song.title,
       artist: song.author,
-      artwork: song.thumbnail?.url || song.thumbnail,
+      artwork: song.thumbnail?.url || song.thumbnail || song.artwork,
     }));
     await TrackPlayer.add(tracks);
     await TrackPlayer.play();
+  };
+
+  const handleUpdatePlaylist = async () => {
+    try {
+      const updatedPlaylist = await updateUserPlaylist(
+        playlist._id,
+        playlistName,
+        playlist.type === "Private" ? "Public" : "Private"
+      );
+
+      if (updatedPlaylist) {
+        setPlaylistName(updatedPlaylist.name);
+        setPlaylist(updatedPlaylist);
+        ToastAndroid.show(
+          `Playlist is now ${updatedPlaylist.type}`,
+          ToastAndroid.SHORT
+        );
+      }
+    } catch (error) {
+      console.error("Error updating playlist:", error);
+    }
   };
 
   return (
@@ -117,7 +137,15 @@ const UserPlaylistScreen = () => {
           paddingHorizontal: 20,
         }}
       >
-        <TouchableOpacity style={styles.playAllButton} onPress={handlePlayAll}>
+        <TouchableOpacity
+          style={[
+            styles.playAllButton,
+            ,
+            { backgroundColor: "lightgreen", flexDirection: "row", gap: 1 },
+          ]}
+          onPress={handlePlayAll}
+        >
+          <MaterialIcons name={"playlist-play"} size={20} color={"#000"} />
           <Text style={[styles.playAllText, { color: "#000" }]}>Play All</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -126,10 +154,10 @@ const UserPlaylistScreen = () => {
             ,
             { backgroundColor: "yellow", flexDirection: "row", gap: 3 },
           ]}
-          onPress={handlePlayAll}
+          onPress={handleUpdatePlaylist}
         >
           <MaterialIcons
-            name={playlist?.type === "Private" ? "public" : "publiv-off"}
+            name={playlist?.type === "Private" ? "public" : "public-off"}
             size={20}
             color={"#000"}
           />
@@ -139,10 +167,15 @@ const UserPlaylistScreen = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.playAllButton, { backgroundColor: "skyblue" }]}
-          onPress={handlePlayAll}
+          style={[
+            styles.playAllButton,
+            ,
+            { backgroundColor: "cyan", flexDirection: "row", gap: 3 },
+          ]}
+          onPress={handleUpdatePlaylist}
         >
-          <Text style={[styles.playAllText, { color: "#000" }]}>Update</Text>
+          <MaterialIcons name={"edit-square"} size={20} color={"#000"} />
+          <Text style={[styles.playAllText, { color: "#000" }]}>Edit</Text>
         </TouchableOpacity>
       </View>
 
@@ -227,7 +260,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     backgroundColor: "#1DB954",
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 15,
     borderRadius: 25,
     shadowColor: "#1DB954",
     shadowOffset: { width: 0, height: 5 },
@@ -239,7 +272,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "white",
-    marginLeft: 8,
+    marginLeft: 3,
   },
   songContainer: {
     flexDirection: "row",

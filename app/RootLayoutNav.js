@@ -28,6 +28,9 @@ import { trackPlayerService } from "@/trackPlayerService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useUser } from "@/context/User";
 import { saveToFavourites } from "@/constants/cachedData";
+import SongOptionsModal from "@/components/OptionsOnNowPlaying";
+import axios from "axios";
+import { addToRNTPQueue, moveSong } from "@/constants/queue";
 
 export default function RootLayoutNav() {
   const colorScheme = useColorScheme();
@@ -42,7 +45,7 @@ export default function RootLayoutNav() {
     setOpen,
     currentQueue,
   } = useSong();
-  const { isPlaying, setIsPlaying } = useSong();
+  const { isPlaying, setIsPlaying, isModalOpen, setIsModalOpen, selectedTrack } = useSong();
   const { playlistName } = useUser();
 
   const route = useSegments();
@@ -141,6 +144,7 @@ export default function RootLayoutNav() {
 
   const headerColor = "#fff";
 
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
       <ThemeProvider value={DarkTheme}>
@@ -193,13 +197,20 @@ export default function RootLayoutNav() {
           />
         ) : null}
 
-        {/* Now Playing Screen */}
         <NowPlayingScreen
           song={currentSong}
           isVisible={open}
           setIsVisible={setOpen}
           isSongLoading={isSongLoading}
           url={songUrl}
+        />
+
+        <SongOptionsModal
+          isVisible={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          song={selectedTrack}
+          moveSong={moveSong}
+          handleQueueSong={() => addToRNTPQueue(selectedTrack)}
         />
       </ThemeProvider>
     </SafeAreaView>

@@ -13,6 +13,8 @@ export const SongProvider = ({ children }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSongLoading, setIsSongLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTrack, setSelectedTrack] = useState(null);
 
   // Function to play a new song
   const playSong = (song) => {
@@ -47,6 +49,9 @@ export const SongProvider = ({ children }) => {
         togglePlayPause,
         open,
         setOpen,
+        isModalOpen,
+        setIsModalOpen,
+        selectedTrack, setSelectedTrack
       }}
     >
       {children}

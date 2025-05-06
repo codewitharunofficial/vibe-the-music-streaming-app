@@ -286,7 +286,6 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
                   setModalVisible(true);
                   setCurrentIndex(index);
                   setSelectedTrack(item);
-                  // console.log("Selected Song: ", item);
                 }}
                 style={{ position: "absolute", top: 20, right: 10 }}
               >
@@ -581,7 +580,10 @@ const NowPlayingScreen = React.memo(
           resizeMode="cover"
         >
           <Text
-            style={[styles.header, { fontSize: 14, marginBottom: 10 }]}
+            style={[
+              styles.header,
+              { fontSize: 14, marginBottom: 10, backfaceVisibility: "visible" },
+            ]}
           >{`Playing From ${playingFrom}`}</Text>
 
           <Text style={styles.header}>Vibe - Now Playing</Text>
@@ -891,7 +893,7 @@ const TrackComponent = ({
   onPress,
   playingFrom,
 }) => {
-  const { currentSong } = useSong();
+  const { currentSong, setIsModalOpen, setSelectedTrack } = useSong();
   const [favorites, setFavorites] = useState([]);
   const { isPlaying, setIsPlaying, setPlayingFrom } = usePlayer();
 
@@ -1007,7 +1009,16 @@ const TrackComponent = ({
   };
 
   return (
-    <TouchableOpacity onPress={play} style={styles.trackItem}>
+    <TouchableOpacity
+      onLongPress={() => {
+        setIsModalOpen(true);
+        setSelectedTrack(item);
+      }}
+      pressRetentionOffset={{ bottom: 10 }}
+      delayLongPress={100}
+      onPress={play}
+      style={styles.trackItem}
+    >
       <View style={{ flexDirection: "row", flex: 0.8 }}>
         <Image
           source={{

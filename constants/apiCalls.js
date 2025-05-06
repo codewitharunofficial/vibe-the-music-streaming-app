@@ -199,6 +199,7 @@ export const createNewPlaylist = async (id, name, setPlaylists) => {
 };
 
 export const handleAddToPlaylist = async (id, song) => {
+  console.log(`${song} to be added to playlist with id: ${id}`);
   try {
     const { data } = await axios.post(
       `${process.env.EXPO_PUBLIC_API}/api/playlist/add-song`,
@@ -222,3 +223,19 @@ export const handleAddToPlaylist = async (id, song) => {
     console.log(error);
   }
 };
+
+
+export const updateUserPlaylist = async (id, name, type) => {
+  try {
+    const { data } = await axios.post(
+      `${process.env.EXPO_PUBLIC_API}/api/update-playlist`,
+      { id: id, name: name, type: type }
+    );
+    if (data.success) {
+      console.log(data);
+      return data.playlist;
+    }
+  } catch (error) {
+    console.log(error);
+  }
+}

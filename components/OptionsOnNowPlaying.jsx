@@ -18,6 +18,7 @@ import { handleAddToPlaylist } from "@/constants/apiCalls";
 import { useSong } from "@/context/SongContext";
 import { usePlayer } from "@/context/PlayerContext";
 import { shareSong } from "@/constants/player";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SongOptionsModal = ({
   isVisible,
@@ -27,7 +28,7 @@ const SongOptionsModal = ({
   handleQueueSong,
 }) => {
   const [isPlaylistModalVisible, setPlaylistModalVisible] = useState(false);
-  const { userPlaylist } = useUser(); // Assume this contains user's playlists
+  const { userPlaylist, setUserPlaylist } = useUser();
   const { userInfo } = useUser();
   const [isAddingSong, setIsAddingSong] = useState(false);
   const { currentQueue, setCurrentQueue } = usePlayer();
@@ -44,11 +45,22 @@ const SongOptionsModal = ({
     onClose();
   };
 
-  // console.log(song);
+  useEffect(() => {
+    const fetchPlaylists = async () => {
+      if (userInfo) {
+        const playlists =
+          JSON.parse(await AsyncStorage.getItem("user-playlists")) || [];
+        if (playlists.length > 0) {
+          setUserPlaylist(playlists);
+        }
+      }
+    };
+
+    fetchPlaylists();
+  }, [userInfo]);
 
   return (
     <>
-      {/* Main Options Modal */}
       <ModalBase
         isVisible={isVisible}
         onBackdropPress={onClose}

@@ -8,7 +8,7 @@ export const UserProvider = ({ children }) => {
   const [userInfo, setUserInfo] = useState(null);
   const [playlist, setPlaylist] = useState(null);
   const [playlistName, setPlaylistName] = useState("");
-  const [userPlaylist, setUserPlaylist] = useState([]);
+  const [userPlaylist, setUserPlaylist] = useState(userInfo?.playlists || []);
 
   return (
     <UserConext.Provider
