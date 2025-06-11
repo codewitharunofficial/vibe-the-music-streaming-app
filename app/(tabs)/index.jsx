@@ -11,17 +11,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   fetchHome,
   getAlbumSongs,
+  getCustomPlaylists,
   getPlaylistSongs,
   handleRecentlyPlayed,
-  playASongs,
 } from "@/constants/apiCalls";
-import {
-  MiniPlayer,
-  MusicSections,
-  NowPlayingScreen,
-  QuickAccessButton,
-  SongsList,
-} from "@/components/Component";
+import { MusicSections, QuickAccessButton } from "@/components/Component";
 import { useSong } from "@/context/SongContext";
 import { usePlayer } from "@/context/PlayerContext";
 import { router } from "expo-router";
@@ -48,16 +42,31 @@ export default function Home() {
   const { currentQueue, setCurrentQueue, setPlayingFrom } = usePlayer();
   const { setPlaylist, setAlbum } = usePlaylist();
   const [albumLoading, setIsAlbumLoading] = useState(false);
-  const { userInfo, setUserInfo } = useUser();
+  const { userInfo, setUserInfo, setUserPlaylist } = useUser();
 
   const savedHome = async () => {
     const results = JSON.parse(await AsyncStorage.getItem("home"));
+    console.log(results);
     if (results) {
       const isOutdated =
         new Date().getTime() >
         JSON.parse(await AsyncStorage.getItem("home_updated_at"));
       if (isOutdated) {
         const newResults = await fetchHome(setIsLoading);
+        if (userInfo.email) {
+          const customPlaylists = await getCustomPlaylists(userInfo?.email);
+          const custom = {
+            ...results,
+            "Developer's Playlists": customPlaylists,
+          };
+          console.log(custom);
+          await AsyncStorage.setItem("home", JSON.stringify(custom));
+          setHome(custom);
+        } else {
+          console.log(
+            "You're not Authorized to get the custom playlists, please login"
+          );
+        }
         if (newResults) {
           setHome(newResults);
         }
@@ -66,7 +75,20 @@ export default function Home() {
     } else {
       const results = await fetchHome(setIsLoading);
       if (results) {
-        setHome(results);
+        if (userInfo.email) {
+          const customPlaylists = await getCustomPlaylists(userInfo?.email);
+          const custom = {
+            ...results,
+            "Developer's Playlists": customPlaylists,
+          };
+          console.log(custom);
+          await AsyncStorage.setItem("home", JSON.stringify(custom));
+          setHome(custom);
+        } else {
+          console.log(
+            "You're not Authorized to get the custom playlists, please login"
+          );
+        }
       }
     }
   };
@@ -129,8 +151,41 @@ export default function Home() {
     const subscription = Linking.addEventListener("url", handleDeepLink);
 
     // Check if app was opened from a link
-    Linking.getInitialURL().then((url) => {
-      if (url) handleDeepLink({ url });
+    Linking.getInitialURL().then(async (url) => {
+      if (url) {
+        if (url.startsWith("file://") || url.startsWith("content://")) {
+          try {
+            setIsSongLoading(true);
+            setPlayingFrom("External");
+            const fileName = url.split("/").pop();
+            const track = {
+              id: Date.now().toString(),
+              url: url,
+              title: decodeURIComponent(fileName || "Audio File"),
+              artist: "UnKnown Artist",
+              artwork:
+                "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
+            };
+
+            setCurrentSong(track);
+
+            await TrackPlayer.setupPlayer();
+
+            await TrackPlayer.reset();
+            await TrackPlayer.add(track);
+            await TrackPlayer.skip(0);
+            await TrackPlayer.play();
+            setIsPlaying(true);
+            setOpen(true);
+          } catch (err) {
+            console.error("Error handling audio file intent:", err);
+          } finally {
+            setIsSongLoading(false);
+          }
+        } else {
+          handleDeepLink({ url });
+        }
+      }
     });
 
     return () => {

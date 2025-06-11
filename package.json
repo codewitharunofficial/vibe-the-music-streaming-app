@@ -42,6 +42,7 @@
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-native": "0.73.6",
+    "react-native-mime-types": "^2.5.0",
     "react-native-modal": "^14.0.0-rc.1",
     "react-native-modals": "^0.22.3",
     "react-native-paper": "^5.13.1",

@@ -35,10 +35,6 @@ const PlaylistScreen = () => {
         setPlaylistLoading(false);
       } else {
         await fetchUserPlaylists(userInfo?._id, setUserPlaylist);
-        await AsyncStorage.setItem(
-          "user-playlists",
-          JSON.stringify(userPlaylist)
-        );
         setPlaylistLoading(false);
       }
     };
@@ -47,7 +43,12 @@ const PlaylistScreen = () => {
 
   const handleCreatePlaylist = async (name) => {
     setLoading(true);
-    await createNewPlaylist(userInfo?._id, name, setUserPlaylist);
+    const data = await createNewPlaylist(userInfo?._id, name);
+    console.log("Update Data for user playlists : ", data);
+    if (data?.length > 0) {
+      setUserPlaylist(data);
+      await AsyncStorage.setItem("user-playlists", JSON.stringify(data));
+    }
     setLoading(false);
   };
 
@@ -78,7 +79,9 @@ const PlaylistScreen = () => {
               }}
             >
               <Image
-                source={{ uri: item.poster || item.songs[0].thumbnail }}
+                source={{
+                  uri: item.songs[0]?.thumbnail || item?.poster,
+                }}
                 style={{ width: 50, height: 50, borderRadius: 50 }}
               />
               <View

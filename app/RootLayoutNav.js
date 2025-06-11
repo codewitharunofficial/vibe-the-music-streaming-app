@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   View,
   Text,
+  TouchableOpacity,
 } from "react-native";
 import { ModalPortal } from "react-native-modals";
 import * as Updates from "expo-updates";
@@ -31,6 +32,9 @@ import { saveToFavourites } from "@/constants/cachedData";
 import SongOptionsModal from "@/components/OptionsOnNowPlaying";
 import axios from "axios";
 import { addToRNTPQueue, moveSong } from "@/constants/queue";
+import { EvilIcons } from "@expo/vector-icons";
+import { fetchUserPlaylists } from "@/constants/apiCalls";
+import TrackOptionModal from "@/components/TrackOptions";
 
 export default function RootLayoutNav() {
   const colorScheme = useColorScheme();
@@ -46,10 +50,11 @@ export default function RootLayoutNav() {
     currentQueue,
   } = useSong();
   const { isPlaying, setIsPlaying, isModalOpen, setIsModalOpen, selectedTrack } = useSong();
-  const { playlistName } = useUser();
+  const { playlistName, setUserPlaylist } = useUser();
 
   const route = useSegments();
   const { userInfo, setUserInfo } = useUser();
+
 
   const setupTrackPlayer = async () => {
     try {
@@ -145,6 +150,23 @@ export default function RootLayoutNav() {
   const headerColor = "#fff";
 
 
+
+  //Refresh-User-Playlists
+
+  const handleRefresh = async () => {
+    try {
+      const playlists = JSON.parse(await AsyncStorage.getItem('user-playlists')) || [];
+
+      if (playlists?.length > 0) {
+        await AsyncStorage.removeItem('user-playlists');
+        await fetchUserPlaylists(userInfo._id, setUserPlaylist);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
       <ThemeProvider value={DarkTheme}>
@@ -164,7 +186,12 @@ export default function RootLayoutNav() {
           />
           <Stack.Screen
             name="playlists"
-            options={{ headerShown: true, headerTitle: "My Playlists", headerTitleStyle: { color: headerColor } }}
+            options={{
+              headerShown: true, headerTitle: "My Playlists", headerTitleStyle: { color: headerColor }, headerRight: () => <TouchableOpacity onPress={() => handleRefresh()} >
+                <EvilIcons name="refresh" size={30} color={'white'} />
+              </TouchableOpacity>
+            }}
+
           />
           <Stack.Screen
             name="user-playlist"
@@ -205,7 +232,7 @@ export default function RootLayoutNav() {
           url={songUrl}
         />
 
-        <SongOptionsModal
+        <TrackOptionModal
           isVisible={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           song={selectedTrack}

@@ -20,13 +20,7 @@ import { usePlayer } from "@/context/PlayerContext";
 import { shareSong } from "@/constants/player";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const SongOptionsModal = ({
-  isVisible,
-  onClose,
-  song,
-  moveSong,
-  handleQueueSong,
-}) => {
+const SongOptionsModal = ({ isVisible, onClose, song, moveSong, from }) => {
   const [isPlaylistModalVisible, setPlaylistModalVisible] = useState(false);
   const { userPlaylist, setUserPlaylist } = useUser();
   const { userInfo } = useUser();
@@ -169,15 +163,20 @@ const SongOptionsModal = ({
                   onClose();
                 }}
               >
-                {isAddingSong && item.name === selectedPlaylist ? (
-                  <ActivityIndicator size={"small"} color={"green"} />
-                ) : (
-                  <Image
-                    source={{ uri: item.poster || item.songs[0].thumbnail }}
-                    style={{ width: 50, height: 50, borderRadius: 50 }}
-                  />
-                )}
+                <Image
+                  source={{ uri: item.poster || item.songs[0].thumbnail }}
+                  style={{ width: 50, height: 50, borderRadius: 50 }}
+                />
+
                 <Text style={styles.optionText}>{item.name}</Text>
+
+                {isAddingSong && item.name === selectedPlaylist ? (
+                  <ActivityIndicator
+                    size={"large"}
+                    color={"green"}
+                    style={{ position: "absolute", right: 100 }}
+                  />
+                ) : null}
               </TouchableOpacity>
             )}
           />

@@ -46,6 +46,7 @@ import {
   downloadAndSaveSong,
   getDownloadedSongs,
   getFavourites,
+  handleLike,
   removeFromFavourites,
   saveToFavourites,
   saveToRecentlyPlayed,
@@ -248,11 +249,13 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
         onClose();
       }}
     >
-      <ImageBackground
-        source={{ uri: currentSong.artwork || currentSong.thumbnail }}
-        style={{ height: height * 0.5, paddingTop: 20, padding: 10 }}
-        blurRadius={10}
-        resizeMode="cover"
+      <ModalContent
+        style={{
+          height: height * 0.5,
+          paddingTop: 20,
+          padding: 10,
+          backgroundColor: "#2F1C6A",
+        }}
       >
         <View style={styles.queueHeader}>
           <Text style={styles.title}>Current Queue</Text>
@@ -295,7 +298,7 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
           )}
           contentContainerStyle={{ paddingBottom: 20 }}
         />
-      </ImageBackground>
+      </ModalContent>
       <SongOptionsModal
         isVisible={modalVisible}
         onClose={close}
@@ -503,36 +506,6 @@ const NowPlayingScreen = React.memo(
       return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
     }, []);
 
-    const handleLike = async () => {
-      if (!userInfo) {
-        Alert.alert("Error!", "Please Sign In To Add Tracks to Favourites");
-        return;
-      }
-
-      try {
-        const fav = await getFavourites();
-        if (fav.find((item) => item.videoId === currentSong.videoId)) {
-          const newFav = await removeFromFavourites(currentSong);
-          setFavorites(newFav);
-          const data = await handleLiked(userInfo?.email, currentSong);
-          console.log(data);
-          ToastAndroid.show("Removed from Favourites", ToastAndroid.SHORT);
-        } else {
-          ToastAndroid.show("Adding Song To Favourites", ToastAndroid.SHORT);
-          fav.push(currentSong);
-          await saveToFavourites(fav);
-          setFavorites(fav);
-          const data = await handleLiked(userInfo?.email, currentSong);
-          setFavorites(data.favourites);
-          await saveToFavourites(data.favourites);
-          ToastAndroid.show("Added To Favourites", ToastAndroid.SHORT);
-        }
-      } catch (error) {
-        console.error("Error handling like:", error);
-        ToastAndroid.show("Error updating favourites", ToastAndroid.SHORT);
-      }
-    };
-
     // 🎯 Fetch Favorites
     const getFav = async () => {
       if (userInfo) {
@@ -671,7 +644,9 @@ const NowPlayingScreen = React.memo(
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.miniPlayerIcon}
-                  onPress={handleLike}
+                  onPress={() =>
+                    handleLike(userInfo, setFavorites, currentSong)
+                  }
                 >
                   {favorites.find(
                     (item) => item.videoId === currentSong?.videoId
@@ -1013,6 +988,7 @@ const TrackComponent = ({
       onLongPress={() => {
         setIsModalOpen(true);
         setSelectedTrack(item);
+        
       }}
       pressRetentionOffset={{ bottom: 10 }}
       delayLongPress={100}
@@ -1050,7 +1026,7 @@ const TrackComponent = ({
       )}
       {playingFrom !== "Local" && (
         <TouchableOpacity
-          onPress={() => onPress(item)}
+          onPress={() => handleLike(userInfo, setFavorites, currentSong)}
           style={{ marginRight: 10 }}
         >
           {favorites.find(
@@ -1061,6 +1037,7 @@ const TrackComponent = ({
     </TouchableOpacity>
   );
 };
+
 
 // export default TrackComponent;
 

@@ -2,6 +2,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import { playASongs } from "./player";
+import { handleLiked } from "./liked";
+import { ToastAndroid } from "react-native";
+import { NativeModules } from 'react-native';
 
 
 export const saveToRecentlyPlayed = async (song) => {
@@ -88,7 +91,7 @@ export const removeFromFavourites = async (song) => {
       const itemIndex = list.findIndex(e => e.videoId === song.videoId);
 
       if (itemIndex !== -1) {
-        
+
         list.splice(itemIndex, 1);
 
         await AsyncStorage.setItem('favourites', JSON.stringify(list));
@@ -203,6 +206,45 @@ export const checkIfDownloaded = async (id) => {
 }
 
 
+export const handleLike = async (userInfo, setFavorites, currentSong) => {
+  if (!userInfo) {
+    Alert.alert("Error!", "Please Sign In To Add Tracks to Favourites");
+    return;
+  }
+
+  try {
+    const fav = await getFavourites();
+    if (fav.find((item) => item.videoId === currentSong.videoId)) {
+      const newFav = await removeFromFavourites(currentSong);
+      setFavorites(newFav);
+      const data = await handleLiked(userInfo?.email, currentSong);
+      console.log(data);
+      ToastAndroid.show("Removed from Favourites", ToastAndroid.SHORT);
+    } else {
+      ToastAndroid.show("Adding Song To Favourites", ToastAndroid.SHORT);
+      fav.push(currentSong);
+      await saveToFavourites(fav);
+      setFavorites(fav);
+      const data = await handleLiked(userInfo?.email, currentSong);
+      await saveToFavourites(data.favourites);
+      ToastAndroid.show("Added To Favourites", ToastAndroid.SHORT);
+    }
+  } catch (error) {
+    console.error("Error handling like:", error);
+    ToastAndroid.show("Error updating favourites", ToastAndroid.SHORT);
+  }
+};
 
 
 
+const { AudioMetadata } = NativeModules;
+
+export const getMetadata = async (uri) => {
+  try {
+    const metadata = await AudioMetadata.getAudioMetadata(uri);
+    return metadata;
+  } catch (error) {
+    console.error("Error fetching metadata", error);
+    throw error;
+  }
+};

@@ -1,3 +1,4 @@
+import { useSegments } from "expo-router";
 import React, { createContext, useContext, useState } from "react";
 
 // Create Context
@@ -15,6 +16,7 @@ export const SongProvider = ({ children }) => {
   const [open, setOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState(null);
+  
 
   // Function to play a new song
   const playSong = (song) => {

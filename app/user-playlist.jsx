@@ -20,6 +20,9 @@ import { playASongs, updateUserPlaylist } from "@/constants/apiCalls";
 import { usePlayer } from "@/context/PlayerContext";
 import { useSong } from "@/context/SongContext";
 import { saveToRecentlyPlayed } from "@/constants/cachedData";
+import CreatePlaylistModal from "@/components/Create-Playlist";
+import RenamePlaylistModal from "@/components/Rename-Playlist";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const UserPlaylistScreen = () => {
   const { playlist, userInfo, setPlaylist } = useUser();
@@ -27,6 +30,7 @@ const UserPlaylistScreen = () => {
   const { setSongUrl, setCurrentSong, currentSong, setIsSongLoading } =
     useSong();
   const [playlistName, setPlaylistName] = useState(playlist.name);
+  const [showRenameModal, setShowRenameModal] = useState(false);
 
   const playbackState = usePlaybackState();
   const { width, height } = Dimensions.get("window");
@@ -72,30 +76,35 @@ const UserPlaylistScreen = () => {
 
   const handlePlayAll = async () => {
     await TrackPlayer.reset();
-    const tracks = playlist.songs.map((song) => ({
-      id: song.videoId || song.id,
-      url: song.url,
+    const tracks = playlist?.songs?.map((song) => ({
+      id: song?.videoId || song?.id,
+      url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
+        song.videoId || song.id
+      }&email=${userInfo?.email || ""}`,
       title: song.title,
-      artist: song.author,
+      artist: song.author || "Unknown Author",
       artwork: song.thumbnail?.url || song.thumbnail || song.artwork,
     }));
     await TrackPlayer.add(tracks);
+    setCurrentSong(tracks[0]);
     await TrackPlayer.play();
+
+    const queue = await TrackPlayer.getQueue();
+    setCurrentQueue(queue);
   };
 
-  const handleUpdatePlaylist = async () => {
+  const handleUpdatePlaylist = async (id, name, type) => {
     try {
-      const updatedPlaylist = await updateUserPlaylist(
-        playlist._id,
-        playlistName,
-        playlist.type === "Private" ? "Public" : "Private"
-      );
+      const updatedPlaylists = await updateUserPlaylist(id, name, type);
 
-      if (updatedPlaylist) {
-        setPlaylistName(updatedPlaylist.name);
-        setPlaylist(updatedPlaylist);
+      if (updatedPlaylists) {
+        await AsyncStorage.setItem(
+          "user-playlists",
+          JSON.stringify(updatedPlaylists)
+        );
+        setPlaylist(updatedPlaylists.find((p) => p._id === id));
         ToastAndroid.show(
-          `Playlist is now ${updatedPlaylist.type}`,
+          `Playlist is now ${playlist.type}`,
           ToastAndroid.SHORT
         );
       }
@@ -154,7 +163,13 @@ const UserPlaylistScreen = () => {
             ,
             { backgroundColor: "yellow", flexDirection: "row", gap: 3 },
           ]}
-          onPress={handleUpdatePlaylist}
+          onPress={() =>
+            handleUpdatePlaylist(
+              playlist._id,
+              playlistName,
+              playlist.type === "Private" ? "Public" : "Private"
+            )
+          }
         >
           <MaterialIcons
             name={playlist?.type === "Private" ? "public" : "public-off"}
@@ -172,10 +187,12 @@ const UserPlaylistScreen = () => {
             ,
             { backgroundColor: "cyan", flexDirection: "row", gap: 3 },
           ]}
-          onPress={handleUpdatePlaylist}
+          onPress={() => {
+            setShowRenameModal(true);
+          }}
         >
           <MaterialIcons name={"edit-square"} size={20} color={"#000"} />
-          <Text style={[styles.playAllText, { color: "#000" }]}>Edit</Text>
+          <Text style={[styles.playAllText, { color: "#000" }]}>Rename</Text>
         </TouchableOpacity>
       </View>
 
@@ -225,6 +242,13 @@ const UserPlaylistScreen = () => {
             )}
           </TouchableOpacity>
         )}
+      />
+      <RenamePlaylistModal
+        visible={showRenameModal}
+        onClose={() => setShowRenameModal(false)}
+        onSave={handleUpdatePlaylist}
+        id={playlist._id}
+        type={playlist.type}
       />
     </View>
   );

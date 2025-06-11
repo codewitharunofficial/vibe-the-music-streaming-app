@@ -31,23 +31,6 @@ export const fetchHome = async (setIsLoading) => {
   }
 };
 
-// export const playASongs = async (id, email, song) => {
-//   try {
-//     console.log("Getting song with ID: ", id);
-
-//     const { data } = await axios.post(
-//       `${process.env.EXPO_PUBLIC_API}/api/song`, { id: id }
-//     );
-//     if (data) {
-//       console.log(data);
-//       return data.song.adaptiveFormats[data.song.adaptiveFormats?.length - 1]
-//         ?.url;
-//     }
-//   } catch (error) {
-//     console.error(error);
-//   }
-// };
-
 export const getTrendings = async () => {
   const options = {
     method: "GET",
@@ -121,22 +104,7 @@ export const getAlbumSongs = async (id) => {
   }
 };
 
-export const handleLiked = async (email, song) => {
-  try {
-    const { data } = await axios.post(
-      `${process.env.EXPO_PUBLIC_API}/api/favourites`,
-      { email: email, song: song }
-    );
-    if (data.success) {
-      console.log(data);
-      return data;
-    } else {
-      console.log(data.message);
-    }
-  } catch (error) {
-    console.log(error);
-  }
-};
+
 
 export const handleRecentlyPlayed = async (email, song) => {
   try {
@@ -176,22 +144,22 @@ export const fetchUserPlaylists = async (userId, setPlaylists) => {
     if (data.success) {
       console.log(data);
       setPlaylists(data.playlists);
+      await AsyncStorage.setItem('user-playlists', JSON.stringify(data.playlists));
     }
   } catch (error) {
     console.log(error);
   }
 };
 
-export const createNewPlaylist = async (id, name, setPlaylists) => {
+export const createNewPlaylist = async (id, name) => {
   try {
     const { data } = await axios.post(
       `${process.env.EXPO_PUBLIC_API}/api/playlist/create`,
       { playlistName: name, id: id }
     );
     if (data.success) {
-      console.log(data);
-      setPlaylists(data.playlists);
-      // return data.playlists;
+
+      return data.playlists;
     }
   } catch (error) {
     console.log(error);
@@ -228,12 +196,23 @@ export const handleAddToPlaylist = async (id, song) => {
 export const updateUserPlaylist = async (id, name, type) => {
   try {
     const { data } = await axios.post(
-      `${process.env.EXPO_PUBLIC_API}/api/update-playlist`,
+      `${process.env.EXPO_PUBLIC_API_2}/api/v2/update-playlist`,
       { id: id, name: name, type: type }
     );
     if (data.success) {
       console.log(data);
-      return data.playlist;
+      return data.playlists;
+    }
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+export const getCustomPlaylists = async (email) => {
+  try {
+    const { data } = await axios.get(`${process.env.EXPO_PUBLIC_API_2}/api/v2/get-custom-playlist?email=${email}`);
+    if (data.success) {
+      return data.playlists;
     }
   } catch (error) {
     console.log(error);
