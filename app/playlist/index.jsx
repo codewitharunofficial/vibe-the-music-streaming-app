@@ -15,6 +15,7 @@ import { usePlaylist } from "@/context/Playlist";
 import { useUser } from "@/context/User";
 import { saveToRecentlyPlayed } from "@/constants/cachedData";
 import { TrackComponent } from "@/components/Component";
+import moment from "moment";
 
 const PlaylistScreen = () => {
   const { playlist } = usePlaylist();
@@ -29,22 +30,32 @@ const PlaylistScreen = () => {
       {/* Playlist Details */}
       <View style={styles.header}>
         <Image
-          source={{ uri: playlist?.playlistCover }}
+          source={{
+            uri:
+              playlist?.songs[0]?.thumbnail ||
+              playlist?.playlistCover ||
+              playlist?.poster,
+          }}
           style={styles.coverImage}
         />
         <View style={styles.details}>
-          <Text style={styles.title}>{playlist?.title}</Text>
-          <Text style={styles.author}>{playlist?.playlistAuthor}</Text>
-          <Text style={styles.release}>{playlist?.playlistRelease}</Text>
+          <Text style={styles.title}>{playlist?.title || playlist?.name}</Text>
+          <Text style={styles.author}>
+            {playlist?.playlistAuthor || "Developer"}
+          </Text>
+          <Text style={styles.release}>
+            {playlist?.playlistRelease ||
+              moment(playlist?.createdAt).toDate().toLocaleDateString('IN')}
+          </Text>
           <Text style={styles.description}>
-            {playlist?.playlistDescription}
+            {playlist?.playlistDescription || playlist.description}
           </Text>
         </View>
       </View>
 
       {/* Songs List */}
       <FlatList
-        data={playlist.results}
+        data={playlist.results || playlist?.songs}
         keyExtractor={(item) => item?.videoId.toString()}
         renderItem={({ item, index }) => (
           <TrackComponent

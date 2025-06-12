@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { mergeRecents } from "./cachedData";
 
-export const fetchHome = async (setIsLoading) => {
+export const fetchHome = async (setIsLoading, email) => {
   const options = {
     method: "GET",
     url: "https://youtube-music-api3.p.rapidapi.com/v2/home",
@@ -17,13 +17,23 @@ export const fetchHome = async (setIsLoading) => {
     setIsLoading(true);
     const { data } = await axios.request(options);
     console.log(data);
-    if (data.results) {
-      await AsyncStorage.setItem("home", JSON.stringify(data.results));
+    if (data.results && email) {
+      const customPlaylists = await getCustomPlaylists(email);
+      const results = { ...data.results, "custom_playlists": customPlaylists };
+      await AsyncStorage.setItem("home", JSON.stringify(results));
       const now = new Date().getTime();
       const expiry = now + 24 * 60 * 60 * 1000;
       await AsyncStorage.setItem('home_updated_at', JSON.stringify(expiry));
       setIsLoading(false);
-      return data.results;
+      return results;
+    } else if (!data.results) {
+      console.log(
+        "Unable To Laod Home Content"
+      );
+    } else if (!email) {
+      console.log(
+        "You're not Authorized to get the custom playlists, please login"
+      );
     }
   } catch (error) {
     console.error(error);
@@ -210,11 +220,17 @@ export const updateUserPlaylist = async (id, name, type) => {
 
 export const getCustomPlaylists = async (email) => {
   try {
-    const { data } = await axios.get(`${process.env.EXPO_PUBLIC_API_2}/api/v2/get-custom-playlist?email=${email}`);
+    const { data } = await axios.get(`${process.env.EXPO_PUBLIC_API_2}/api/v2/get-custom-playlists?email=${email}`);
     if (data.success) {
       return data.playlists;
     }
   } catch (error) {
     console.log(error);
   }
+}
+
+export const reloadHome = async (setIsLoading, email) => {
+  await AsyncStorage.multiRemove(['home', 'home_updated_at']);
+
+  fetchHome(setIsLoading, email);
 }

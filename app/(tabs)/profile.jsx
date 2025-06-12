@@ -21,6 +21,7 @@ import { router } from "expo-router";
 import { mergeRecents, saveToFavourites } from "@/constants/cachedData";
 import { useSong } from "@/context/SongContext";
 import Loader from "@/components/Loader";
+import { reloadHome } from "@/constants/apiCalls";
 
 // Complete any pending browser session
 WebBrowser.maybeCompleteAuthSession();
@@ -90,6 +91,7 @@ const UserProfile = () => {
         await AsyncStorage.setItem("userInfo", JSON.stringify(data.user));
         await saveToFavourites(data.user?.favourites);
         await mergeRecents(data.user.recently_played);
+        await reloadHome(setIsLoading, data.user.email || " ");
         setIsLoading(false);
       } else {
         setIsLoading(false);

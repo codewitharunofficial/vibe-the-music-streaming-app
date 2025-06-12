@@ -71,13 +71,27 @@ const SongCard = ({
       onPress={() => onPlayPress(section, song, index)}
       style={styles.cardContainer}
     >
-      <Image source={{ uri: song.thumbnail }} style={styles.image} />
+      <Image
+        source={{
+          uri: song?.songs?.thumbnail || song?.thumbnail || song?.poster,
+        }}
+        style={styles.image}
+      />
       <Text numberOfLines={1} style={styles.title}>
-        {song.title?.slice(0, 30)}
+        {song.title?.slice(0, 30) || song?.name}
       </Text>
-      <Text numberOfLines={1} style={[styles.artist, { color: "#fff" }]}>
-        {song.author?.slice(0, 30)}
-      </Text>
+      {song?.author ? (
+        <Text numberOfLines={1} style={[styles.artist, { color: "#fff" }]}>
+          {song.author?.slice(0, 30)}
+        </Text>
+      ) : (
+        song?.type === "Public" &&
+        section === "custom_playlists" && (
+          <Text numberOfLines={1} style={[styles.artist, { color: "#fff" }]}>
+            {"Arun"}
+          </Text>
+        )
+      )}
       <View style={styles.iconContainer}></View>
     </TouchableOpacity>
   );
@@ -988,7 +1002,6 @@ const TrackComponent = ({
       onLongPress={() => {
         setIsModalOpen(true);
         setSelectedTrack(item);
-        
       }}
       pressRetentionOffset={{ bottom: 10 }}
       delayLongPress={100}
@@ -1037,7 +1050,6 @@ const TrackComponent = ({
     </TouchableOpacity>
   );
 };
-
 
 // export default TrackComponent;
 

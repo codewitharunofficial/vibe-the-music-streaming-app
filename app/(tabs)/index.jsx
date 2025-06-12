@@ -46,49 +46,23 @@ export default function Home() {
 
   const savedHome = async () => {
     const results = JSON.parse(await AsyncStorage.getItem("home"));
-    console.log(results);
+    // console.log(results);
     if (results) {
       const isOutdated =
         new Date().getTime() >
         JSON.parse(await AsyncStorage.getItem("home_updated_at"));
       if (isOutdated) {
-        const newResults = await fetchHome(setIsLoading);
-        if (userInfo.email) {
-          const customPlaylists = await getCustomPlaylists(userInfo?.email);
-          const custom = {
-            ...results,
-            "Developer's Playlists": customPlaylists,
-          };
-          console.log(custom);
-          await AsyncStorage.setItem("home", JSON.stringify(custom));
-          setHome(custom);
-        } else {
-          console.log(
-            "You're not Authorized to get the custom playlists, please login"
-          );
-        }
+        const newResults = await fetchHome(setIsLoading, userInfo?.email || "");
+
         if (newResults) {
           setHome(newResults);
         }
       }
       setHome(results);
     } else {
-      const results = await fetchHome(setIsLoading);
+      const results = await fetchHome(setIsLoading, userInfo?.email || "");
       if (results) {
-        if (userInfo.email) {
-          const customPlaylists = await getCustomPlaylists(userInfo?.email);
-          const custom = {
-            ...results,
-            "Developer's Playlists": customPlaylists,
-          };
-          console.log(custom);
-          await AsyncStorage.setItem("home", JSON.stringify(custom));
-          setHome(custom);
-        } else {
-          console.log(
-            "You're not Authorized to get the custom playlists, please login"
-          );
-        }
+        setHome(results);
       }
     }
   };
@@ -260,6 +234,14 @@ export default function Home() {
         router.push({
           pathname: "/playlist/",
         });
+      }
+    } else if (section === "custom_playlists") {
+      setIsPlaylistLoading(true);
+      const savedHome = JSON.parse(await AsyncStorage.getItem("home"));
+      if (savedHome?.custom_playlists) {
+        console.log(savedHome.custom_playlists);
+        setPlaylist(savedHome?.custom_playlists[index]);
+        router.push({ pathname: "/playlist/" });
       }
     } else {
       console.log("Getting Album.....>", song.browseId);
