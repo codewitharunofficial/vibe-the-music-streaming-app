@@ -15,8 +15,14 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "UIBackgroundModes": ["audio", "audio", "audio", "audio"]
-      }
+        "UIBackgroundModes": [
+          "audio",
+          "audio",
+          "audio",
+          "audio"
+        ]
+      },
+      "bundleIdentifier": "com.codewitharun.vibe"
     },
     "android": {
       "adaptiveIcon": {
@@ -39,7 +45,10 @@
               "pathPrefix": "/"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },

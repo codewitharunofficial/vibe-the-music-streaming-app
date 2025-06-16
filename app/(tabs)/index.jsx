@@ -52,6 +52,7 @@ export default function Home() {
         new Date().getTime() >
         JSON.parse(await AsyncStorage.getItem("home_updated_at"));
       if (isOutdated) {
+        console.log(userInfo);
         const newResults = await fetchHome(setIsLoading, userInfo?.email || "");
 
         if (newResults) {
@@ -69,6 +70,20 @@ export default function Home() {
 
   useEffect(() => {
     savedHome();
+  }, []);
+
+  const getUserInfo = async () => {
+    const user = JSON.parse(await AsyncStorage.getItem("userInfo"));
+    // console.log(user);
+    if (user) {
+      setUserInfo(user);
+    } else {
+      console.log("No LoggedIn User Found");
+    }
+  };
+
+  useEffect(() => {
+    getUserInfo();
   }, []);
 
   useEffect(() => {
@@ -172,7 +187,7 @@ export default function Home() {
     if (section === "quick_picks") {
       try {
         await TrackPlayer.reset();
-        setCurrentSong(song);
+        // setCurrentSong(song);
         setPlayingFrom("Home");
         const track = {
           id: song.videoId,
@@ -186,7 +201,7 @@ export default function Home() {
         await TrackPlayer.add(track);
         await TrackPlayer.skip(0);
         await TrackPlayer.play();
-        setSongUrl(track.url);
+        // setSongUrl(track.url);
         setCurrentSong(track);
 
         ToastAndroid.show("Song Is Added To The Queue", ToastAndroid.SHORT);

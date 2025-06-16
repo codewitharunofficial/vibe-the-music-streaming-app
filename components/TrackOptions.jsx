@@ -99,6 +99,7 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
                 await TrackPlayer.move(indexToMoveFrom, currentTrackIndex + 1);
               }
             }}
+            disabled={currentQueue?.length < 1}
           >
             <MaterialIcons name="next-plan" size={24} color="white" />
             <Text style={styles.optionText}>Play Next In queue</Text>
@@ -129,6 +130,7 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
                 setCurrentQueue([...currentQueue, song]);
                 ToastAndroid.show("Song Added To The Queue", 2000);
               }}
+              disabled={currentQueue.length < 1}
             >
               <Ionicons name="add" size={24} color="white" />
               <Text style={styles.optionText}>Add To Queue</Text>
@@ -146,7 +148,7 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
           {!useSegments().includes("local") && (
             <TouchableOpacity
               style={styles.optionButton}
-              onPress={() => shareSong(currentSong)}
+              onPress={() => shareSong(song)}
             >
               <AntDesign name="sharealt" size={24} color="white" />
               <Text style={styles.optionText}>Share</Text>

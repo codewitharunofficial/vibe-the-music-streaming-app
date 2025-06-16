@@ -197,6 +197,20 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
   const { userInfo } = useUser();
   const { currentIndex, setCurrentIndex } = usePlayer();
   const [selectedTrack, setSelectedTrack] = useState(null);
+  const flatListRef = useRef(null);
+
+  useEffect(() => {
+    TrackPlayer.getActiveTrackIndex().then((index) => {
+      setCurrentIndex(index); // Update context/state
+      // if (index !== -1 && flatListRef.current) {
+      //   flatListRef.current.scrollToIndex({
+      //     index,
+      //     animated: true,
+      //     viewPosition: 0.5,
+      //   });
+      // }
+    });
+  }, [isVisible, currentIndex]);
 
   function moveSong(arr, fromIndex, toIndex) {
     if (
@@ -256,6 +270,7 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
 
   return (
     <BottomModal
+      onTouchOutside={() => console.log("Touched Outside")}
       visible={isVisible}
       style={{ width: width, height: height * 0.5 }}
       swipeDirection={["down"]}
@@ -276,8 +291,17 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
         </View>
 
         <FlatList
+          ref={flatListRef}
+          initialScrollIndex={currentIndex}
           data={queue}
-          keyExtractor={(item, index) => index}
+          getItemLayout={(data, index) => ({
+            length: 60,
+            offset: 60 * index,
+            index,
+          })}
+          keyExtractor={(item) =>
+            item?.videoId?.toString() || item?.id?.toString()
+          }
           renderItem={({ item, index }) => (
             <TouchableOpacity
               onPress={async () => {
@@ -551,8 +575,9 @@ const NowPlayingScreen = React.memo(
         modalAnimation={new SlideAnimation({ slideFrom: "bottom" })}
         swipeDirection={["down"]}
         swipeThreshold={1000}
-        onTouchOutside={() => {}}
+        onTouchOutside={() => {console.log("Touched Outside")}}
         onSwipeRelease={() => !showQueue && setIsVisible(false)}
+        onHardwareBackPress={() => setIsVisible(!!isVisible)}
       >
         <ImageBackground
           source={{
@@ -663,7 +688,8 @@ const NowPlayingScreen = React.memo(
                   }
                 >
                   {favorites.find(
-                    (item) => item.videoId === currentSong?.videoId
+                    (item) =>
+                      item.videoId === currentSong?.videoId || currentSong.id
                   ) ? (
                     <Ionicons name="heart" size={24} color="#FF4D67" />
                   ) : (
@@ -847,7 +873,7 @@ const MiniPlayer = ({
           }}
         >
           {favorites.find(
-            (item) => item.videoId === (currentSong.videoId || currentSong.id)
+            (item) => (item.videoId || item.id) === (currentSong.videoId || currentSong.id)
           ) ? (
             <Ionicons name="heart" size={24} color={"#FF4D67"} />
           ) : (
@@ -941,7 +967,7 @@ const TrackComponent = ({
   const play = async () => {
     try {
       await TrackPlayer.reset();
-      setCurrentSong(item);
+      // setCurrentSong(item);
       setPlayingFrom(playingFrom);
 
       const track = {
@@ -960,7 +986,7 @@ const TrackComponent = ({
       await TrackPlayer.add(track);
       await TrackPlayer.skip(0);
       await TrackPlayer.play();
-      setSongUrl(track.url);
+      // setSongUrl(track.url);
       setCurrentSong(track);
 
       const newQueue = songs.slice(index, songs.length);

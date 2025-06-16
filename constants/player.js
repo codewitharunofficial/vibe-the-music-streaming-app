@@ -19,7 +19,7 @@ export const playASongs = async (id, email, song) => {
 };
 
 export const shareSong = async (currentSong) => {
-  const songId = currentSong?.videoId;
+  const songId = currentSong?.videoId || currentSong?.id;
   if (!songId) return;
 
   const deepLink = `${process.env.EXPO_PUBLIC_API}/api/listen?id=${songId}`;
