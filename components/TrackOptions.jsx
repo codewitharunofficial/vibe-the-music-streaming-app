@@ -21,6 +21,7 @@ import { usePlayer } from "@/context/PlayerContext";
 import { shareSong } from "@/constants/player";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSegments } from "expo-router";
+import { getFavourites, handleLike } from "@/constants/cachedData";
 
 const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
   const [isPlaylistModalVisible, setPlaylistModalVisible] = useState(false);
@@ -31,6 +32,7 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
   const { currentIndex, setCurrentIndex } = usePlayer();
   const { currentSong, setCurrentSong } = useSong();
   const [selectedPlaylist, setSelectedPlaylist] = useState("");
+  const [favourites, setFavorites] = useState([]);
 
   const { width, height } = Dimensions.get("window");
 
@@ -54,8 +56,6 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
 
     fetchPlaylists();
   }, [userInfo]);
-
-  //   console.log(from);
 
   return (
     <>
@@ -105,7 +105,10 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
             <Text style={styles.optionText}>Play Next In queue</Text>
           </TouchableOpacity>
 
-          {currentQueue.find((track) => track.id === song?.id) ? (
+          {currentQueue.find(
+            (track) =>
+              (track.id || track.videoId) === (song?.id || song?.videoId)
+          ) ? (
             <TouchableOpacity
               style={styles.optionButton}
               onPress={async () => {
@@ -143,6 +146,31 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
           >
             <Ionicons name="add-circle" size={24} color="white" />
             <Text style={styles.optionText}>Add to Playlist</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.optionButton}
+            onPress={() => {
+              handleLike(userInfo, setFavorites, song);
+              setPlaylistModalVisible(false);
+            }}
+          >
+            {!getFavourites().then((fav) =>
+              fav?.find(
+                (item) =>
+                  (item?.id || item?.videoId) === song?.id || song?.videoId
+              )
+            ) ? (
+              <>
+                <Ionicons name="heart-outline" size={24} color={"#fff"} />
+                <Text style={styles.optionText}>Add To Favourites</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="heart" size={24} color={"#FF4D67"} />
+                <Text style={styles.optionText}>Remove From Favourites</Text>
+              </>
+            )}
           </TouchableOpacity>
 
           {!useSegments().includes("local") && (

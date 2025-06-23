@@ -50,7 +50,7 @@ const UserPlaylistScreen = () => {
 
       await TrackPlayer.reset();
       const tracks = newQueue.map((s) => ({
-        id: s.videoId,
+        id: s.videoId || s.id,
         url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
           s.videoId || s.id
         }&email=${userInfo?.email || ""}`,
@@ -120,7 +120,7 @@ const UserPlaylistScreen = () => {
           style={{ marginBottom: 0, flexDirection: "row", flexWrap: "wrap" }}
         >
           <Image
-            source={{ uri: playlist.poster || playlist.songs[0].thumbnail }}
+            source={{ uri: playlist.songs[0].thumbnail || playlist?.poster }}
             style={[
               styles.thumbnail,
               {

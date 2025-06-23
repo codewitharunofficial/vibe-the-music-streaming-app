@@ -92,7 +92,7 @@ const UpdatesScreen = () => {
       {updateInfo.isUpdateAvailable && !updateInfo.downloadedUpdate && (
         <TouchableOpacity
           onPress={handleDownloadUpdate}
-          style={[styles.button, { backgroundColor: "lightgreen" }]}
+          style={[styles.button, { backgroundColor: reloadButton }]}
           disabled={updateInfo.isDownloading}
         >
           <Text style={{ color: textColor }}>

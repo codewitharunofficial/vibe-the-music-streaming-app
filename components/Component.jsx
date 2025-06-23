@@ -371,7 +371,7 @@ const NowPlayingScreen = React.memo(
     const [downloaded, setDownloaded] = useState([]);
     const [currentDownload, setCurrentDownload] = useState(null);
 
-    // 🎯 Handle Track Change and Sync UI
+    // Handle Track Change and Sync UI
     const handleTrackChange = useCallback(async () => {
       try {
         const activeTrackIndex = await TrackPlayer.getActiveTrackIndex();
@@ -398,7 +398,7 @@ const NowPlayingScreen = React.memo(
       }
     }, [currentQueue, currentIndex, playbackState.state]);
 
-    // 🎯 Add Event Listeners for Track Change and Queue End
+    // Add Event Listeners for Track Change and Queue End
     useEffect(() => {
       if (isInitialMount.current) {
         handleTrackChange();
@@ -440,7 +440,7 @@ const NowPlayingScreen = React.memo(
       };
     }, [handleTrackChange]);
 
-    // 🎯 Update Service with Current Queue and Index
+    //  Update Service with Current Queue and Index
     const updateService = useCallback(() => {
       if (typeof updateServiceData === "function") {
         updateServiceData(currentQueue, userInfo, currentIndex);
@@ -456,7 +456,7 @@ const NowPlayingScreen = React.memo(
       updateService();
     }, [updateService]);
 
-    // 🎯 Playback Controls
+    //  Playback Controls
     const playPause = useCallback(async () => {
       try {
         if (playbackState.state === State.Playing) {
@@ -544,7 +544,7 @@ const NowPlayingScreen = React.memo(
       return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
     }, []);
 
-    // 🎯 Fetch Favorites
+    // Fetch Favorites
     const getFav = async () => {
       if (userInfo) {
         const data = await getFavourites();
@@ -575,7 +575,9 @@ const NowPlayingScreen = React.memo(
         modalAnimation={new SlideAnimation({ slideFrom: "bottom" })}
         swipeDirection={["down"]}
         swipeThreshold={1000}
-        onTouchOutside={() => {console.log("Touched Outside")}}
+        onTouchOutside={() => {
+          console.log("Touched Outside");
+        }}
         onSwipeRelease={() => !showQueue && setIsVisible(false)}
         onHardwareBackPress={() => setIsVisible(!!isVisible)}
       >
@@ -689,7 +691,8 @@ const NowPlayingScreen = React.memo(
                 >
                   {favorites.find(
                     (item) =>
-                      item.videoId === currentSong?.videoId || currentSong.id
+                      (item.videoId || item?.id) ===
+                      (currentSong?.videoId || currentSong.id)
                   ) ? (
                     <Ionicons name="heart" size={24} color="#FF4D67" />
                   ) : (
@@ -873,7 +876,9 @@ const MiniPlayer = ({
           }}
         >
           {favorites.find(
-            (item) => (item.videoId || item.id) === (currentSong.videoId || currentSong.id)
+            (item) =>
+              (item.videoId || item.id) ===
+              (currentSong.videoId || currentSong.id)
           ) ? (
             <Ionicons name="heart" size={24} color={"#FF4D67"} />
           ) : (
@@ -988,6 +993,8 @@ const TrackComponent = ({
       await TrackPlayer.play();
       // setSongUrl(track.url);
       setCurrentSong(track);
+
+      console.log("Songs To Be Added In The Queue: ", songs);
 
       const newQueue = songs.slice(index, songs.length);
       setCurrentQueue(newQueue);
@@ -1311,6 +1318,7 @@ const styles = StyleSheet.create({
   },
   trackDetails: {
     marginLeft: 15,
+    maxWidth: '60%'
   },
 });
 

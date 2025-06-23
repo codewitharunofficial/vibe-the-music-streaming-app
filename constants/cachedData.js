@@ -69,16 +69,18 @@ export const saveToFavourites = async (favourites) => {
   try {
     await AsyncStorage.setItem("favourites", JSON.stringify(favourites));
   } catch (error) {
-    console.log(error);
+    console.log("Error saving favourites:", error);
   }
 };
 
 export const getFavourites = async () => {
   try {
-    const list = JSON.parse(await AsyncStorage.getItem("favourites")) || [];
-    if (list) return list;
+    const raw = await AsyncStorage.getItem("favourites");
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
   } catch (error) {
-    console.log(error);
+    console.log("Error getting favourites:", error);
+    return [];
   }
 };
 
@@ -213,27 +215,32 @@ export const handleLike = async (userInfo, setFavorites, currentSong) => {
   }
 
   try {
-    const fav = await getFavourites();
-    if (fav.find((item) => item.videoId === currentSong.videoId)) {
-      const newFav = await removeFromFavourites(currentSong);
-      setFavorites(newFav);
-      const data = await handleLiked(userInfo?.email, currentSong);
-      console.log(data);
-      ToastAndroid.show("Removed from Favourites", ToastAndroid.SHORT);
-    } else {
-      ToastAndroid.show("Adding Song To Favourites", ToastAndroid.SHORT);
-      fav.push(currentSong);
-      await saveToFavourites(fav);
-      setFavorites(fav);
-      const data = await handleLiked(userInfo?.email, currentSong);
+    const currentFavourites = (await getFavourites()) || [];
+    const isLiked = currentFavourites.some((item) => item.videoId === currentSong.videoId);
+
+    ToastAndroid.show(
+      isLiked ? "Removing from Favourites..." : "Adding to Favourites...",
+      ToastAndroid.SHORT
+    );
+
+    const data = await handleLiked(userInfo.email, currentSong); // server handles toggle logic
+    if (data?.favourites) {
       await saveToFavourites(data.favourites);
-      ToastAndroid.show("Added To Favourites", ToastAndroid.SHORT);
+      setFavorites(data.favourites);
+
+      ToastAndroid.show(
+        isLiked ? "Removed from Favourites" : "Added to Favourites",
+        ToastAndroid.SHORT
+      );
+    } else {
+      throw new Error("Invalid server response");
     }
   } catch (error) {
     console.error("Error handling like:", error);
     ToastAndroid.show("Error updating favourites", ToastAndroid.SHORT);
   }
 };
+
 
 
 

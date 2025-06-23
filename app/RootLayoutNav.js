@@ -56,6 +56,22 @@ export default function RootLayoutNav() {
   const { userInfo, setUserInfo } = useUser();
 
 
+
+  const getUserInfo = async () => {
+    const user = JSON.parse(await AsyncStorage.getItem("userInfo"));
+    // console.log(user);
+    if (user) {
+      setUserInfo(user);
+    } else {
+      console.log("No LoggedIn User Found");
+    }
+  };
+
+  useEffect(() => {
+    getUserInfo();
+  }, []);
+
+
   const setupTrackPlayer = async () => {
     try {
       console.log("Setting up TrackPlayer...");

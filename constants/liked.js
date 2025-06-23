@@ -7,8 +7,7 @@ export const handleLiked = async (email, song) => {
             { email: email, song: song }
         );
         if (data.success) {
-            console.log(data);
-            return data;
+            return data.favourites;
         } else {
             console.log(data.message);
         }

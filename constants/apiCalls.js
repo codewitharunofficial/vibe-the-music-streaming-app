@@ -16,9 +16,10 @@ export const fetchHome = async (setIsLoading, email) => {
   try {
     setIsLoading(true);
     const { data } = await axios.request(options);
-    console.log(data);
-    if (data.results && email) {
-      const customPlaylists = await getCustomPlaylists(email);
+    // console.log(data);
+    if (data.results) {
+      const customPlaylists = await getCustomPlaylists();
+      console.log(customPlaylists);
       const results = { ...data.results, "custom_playlists": customPlaylists };
       await AsyncStorage.setItem("home", JSON.stringify(results));
       const now = new Date().getTime();
@@ -27,12 +28,9 @@ export const fetchHome = async (setIsLoading, email) => {
       setIsLoading(false);
       return results;
     } else if (!data.results) {
+      setIsLoading(false);
       console.log(
         "Unable To Laod Home Content"
-      );
-    } else if (!email) {
-      console.log(
-        "You're not Authorized to get the custom playlists, please login"
       );
     }
   } catch (error) {
@@ -218,9 +216,9 @@ export const updateUserPlaylist = async (id, name, type) => {
   }
 }
 
-export const getCustomPlaylists = async (email) => {
+export const getCustomPlaylists = async () => {
   try {
-    const { data } = await axios.get(`${process.env.EXPO_PUBLIC_API_2}/api/v2/get-custom-playlists?email=${email}`);
+    const { data } = await axios.get(`${process.env.EXPO_PUBLIC_API_2}/api/v2/get-custom-playlists`);
     if (data.success) {
       return data.playlists;
     }
@@ -231,6 +229,5 @@ export const getCustomPlaylists = async (email) => {
 
 export const reloadHome = async (setIsLoading, email) => {
   await AsyncStorage.multiRemove(['home', 'home_updated_at']);
-
   fetchHome(setIsLoading, email);
 }

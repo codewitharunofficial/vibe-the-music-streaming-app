@@ -45,7 +45,7 @@ const PlaylistScreen = () => {
           </Text>
           <Text style={styles.release}>
             {playlist?.playlistRelease ||
-              moment(playlist?.createdAt).toDate().toLocaleDateString('IN')}
+              moment(playlist?.createdAt).toDate().toLocaleDateString("IN")}
           </Text>
           <Text style={styles.description}>
             {playlist?.playlistDescription || playlist.description}
@@ -53,21 +53,20 @@ const PlaylistScreen = () => {
         </View>
       </View>
 
-      {/* Songs List */}
       <FlatList
         data={playlist.results || playlist?.songs}
-        keyExtractor={(item) => item?.videoId.toString()}
+        // keyExtractor={(item) => item?.videoId.toString() || item?.id.toString()}
         renderItem={({ item, index }) => (
           <TrackComponent
             item={item}
-            songs={playlist.results}
+            songs={playlist.results || playlist?.songs}
             setCurrentQueue={setCurrentQueue}
             setCurrentSong={setCurrentSong}
             setIsSongLoading={setIsSongLoading}
             setSongUrl={setSongUrl}
             index={index}
             userInfo={userInfo}
-            playingFrom={"Playlists"}
+            playingFrom={playlist?.songs ? "Custom Playlist" : "Playlists"}
           />
         )}
         contentContainerStyle={{ flexDirection: "column-reverse" }}

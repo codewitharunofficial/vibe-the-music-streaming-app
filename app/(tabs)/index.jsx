@@ -72,19 +72,6 @@ export default function Home() {
     savedHome();
   }, []);
 
-  const getUserInfo = async () => {
-    const user = JSON.parse(await AsyncStorage.getItem("userInfo"));
-    // console.log(user);
-    if (user) {
-      setUserInfo(user);
-    } else {
-      console.log("No LoggedIn User Found");
-    }
-  };
-
-  useEffect(() => {
-    getUserInfo();
-  }, []);
 
   useEffect(() => {
     const handleDeepLink = async ({ url }) => {
@@ -257,6 +244,7 @@ export default function Home() {
         console.log(savedHome.custom_playlists);
         setPlaylist(savedHome?.custom_playlists[index]);
         router.push({ pathname: "/playlist/" });
+        setIsPlaylistLoading(false);
       }
     } else {
       console.log("Getting Album.....>", song.browseId);
