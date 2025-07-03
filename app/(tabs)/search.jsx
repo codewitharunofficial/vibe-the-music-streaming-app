@@ -48,9 +48,10 @@ const SearchScreen = () => {
 
     try {
       const { data } = await axios.request(options);
-      console.log(data);
-      setSongs(data.result);
-      setToken(data.nextPageToken);
+      if (data?.result) {
+        setSongs(data?.result);
+        setToken(data?.nextPageToken);
+      }
     } catch (error) {
       console.error(error);
     }
@@ -87,7 +88,7 @@ const SearchScreen = () => {
           color="white"
           style={{ marginTop: 20 }}
         />
-      ) : songs.length > 0 ? (
+      ) : songs?.length > 0 ? (
         <FlatList
           data={songs}
           keyExtractor={(item) => item?.videoId.toString()}
@@ -101,7 +102,7 @@ const SearchScreen = () => {
               setSongUrl={setSongUrl}
               index={index}
               userInfo={userInfo}
-              playingFrom={'Search'}
+              playingFrom={"Search"}
             />
           )}
           showsVerticalScrollIndicator={false}

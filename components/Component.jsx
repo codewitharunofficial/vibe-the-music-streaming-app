@@ -274,6 +274,7 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
       visible={isVisible}
       style={{ width: width, height: height * 0.5 }}
       swipeDirection={["down"]}
+      swipeThreshold={1000}
       onSwipeRelease={() => {
         onClose();
       }}
@@ -309,6 +310,16 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
               }}
               style={styles.songItem}
             >
+              <Image
+                source={{
+                  uri:
+                    item.thumbnail?.url ||
+                    item.thumbnail ||
+                    item.artwork ||
+                    "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
+                }}
+                style={{ height: 50, width: 50, padding: 10, borderRadius: 10 }}
+              />
               <View style={{ flexDirection: "column" }}>
                 <Text style={styles.songTitle}>{item.title?.slice(0, 20)}</Text>
                 <Text style={styles.artist}>{item.author?.slice(0, 20)}</Text>
@@ -1282,7 +1293,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#444",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 10,
     paddingHorizontal: 10,
   },
   songTitle: {
@@ -1318,7 +1329,7 @@ const styles = StyleSheet.create({
   },
   trackDetails: {
     marginLeft: 15,
-    maxWidth: '60%'
+    maxWidth: "60%",
   },
 });
 

@@ -104,7 +104,6 @@ const SongOptionsModal = ({ isVisible, onClose, song, moveSong, from }) => {
             style={styles.optionButton}
             onPress={async () => {
               const queue = await TrackPlayer.getQueue();
-
               const indexToremove = queue.findIndex(
                 (s) => s.id === song.videoId
               );
