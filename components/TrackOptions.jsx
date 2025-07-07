@@ -33,6 +33,7 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
   const { currentSong, setCurrentSong } = useSong();
   const [selectedPlaylist, setSelectedPlaylist] = useState("");
   const [favourites, setFavorites] = useState([]);
+  const [isFavourite, setIsFavourite] = useState(false);
 
   const { width, height } = Dimensions.get("window");
 
@@ -42,6 +43,18 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
     setCurrentQueue(queue);
     onClose();
   };
+
+  useEffect(() => {
+    const checkIfFavourite = async () => {
+      const fav = await getFavourites();
+      const found = fav?.some(
+        (item) => (item?.id || item?.videoId) === (song?.id || song?.videoId)
+      );
+      setIsFavourite(!!found);
+    };
+
+    checkIfFavourite();
+  }, [song]);
 
   useEffect(() => {
     const fetchPlaylists = async () => {
@@ -56,6 +69,18 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
 
     fetchPlaylists();
   }, [userInfo]);
+
+  const handlePress = async () => {
+    await handleLike(userInfo, setFavorites, song);
+    setPlaylistModalVisible(false);
+
+    // Refresh favourite status after like/unlike
+    const fav = await getFavourites();
+    const found = fav?.some(
+      (item) => (item?.id || item?.videoId) === (song?.id || song?.videoId)
+    );
+    setIsFavourite(!!found);
+  };
 
   return (
     <>
@@ -148,27 +173,16 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
             <Text style={styles.optionText}>Add to Playlist</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.optionButton}
-            onPress={() => {
-              handleLike(userInfo, setFavorites, song);
-              setPlaylistModalVisible(false);
-            }}
-          >
-            {!getFavourites().then((fav) =>
-              fav?.find(
-                (item) =>
-                  (item?.id || item?.videoId) === song?.id || song?.videoId
-              )
-            ) ? (
+          <TouchableOpacity style={styles.optionButton} onPress={handlePress}>
+            {isFavourite ? (
               <>
-                <Ionicons name="heart-outline" size={24} color={"#fff"} />
-                <Text style={styles.optionText}>Add To Favourites</Text>
+                <Ionicons name="heart" size={24} color="#FF4D67" />
+                <Text style={styles.optionText}>Remove From Favourites</Text>
               </>
             ) : (
               <>
-                <Ionicons name="heart" size={24} color={"#FF4D67"} />
-                <Text style={styles.optionText}>Remove From Favourites</Text>
+                <Ionicons name="heart-outline" size={24} color="#fff" />
+                <Text style={styles.optionText}>Add To Favourites</Text>
               </>
             )}
           </TouchableOpacity>

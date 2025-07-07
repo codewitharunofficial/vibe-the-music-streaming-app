@@ -13,6 +13,7 @@ import { useSong } from "@/context/SongContext";
 import {
   getFavourites,
   getRecentlyPlayed,
+  handleLike,
   removeFromFavourites,
   saveToFavourites,
   saveToRecentlyPlayed,
@@ -27,7 +28,7 @@ const Favourites = () => {
   const { setSongUrl } = useSong();
   const { setIsSongLoading } = useSong();
   const { setCurrentSong } = useSong();
-  const { open, setOpen } = useSong();
+  useSong();
   const [loading, setLoading] = useState(false);
   const { setCurrentQueue } = usePlayer();
   const [favorites, setFavorites] = useState([]);
@@ -36,21 +37,6 @@ const Favourites = () => {
   const getFav = async () => {
     const data = await getFavourites();
     setFavorites(data?.reverse());
-  };
-
-  const handleLike = async (song) => {
-    try {
-      const fav = await getFavourites();
-      if (fav.find((item) => item.videoId === song.videoId)) {
-        const newFav = await removeFromFavourites(song);
-        setFavorites(newFav?.reverse());
-        const data = await handleLiked(userInfo?.email, song);
-        setFavorites(data?.favourites?.reverse());
-        await saveToFavourites(data?.favourites);
-      }
-    } catch (error) {
-      console.log(error);
-    }
   };
 
   useEffect(() => {
