@@ -1095,8 +1095,6 @@ const TrackComponent = ({
   );
 };
 
-// export default TrackComponent;
-
 const styles = StyleSheet.create({
   cardContainer: {
     flexDirection: "column",

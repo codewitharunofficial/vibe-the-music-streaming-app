@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
+  ToastAndroid,
 } from "react-native";
 import * as MediaLibrary from "expo-media-library";
 import { useSong } from "@/context/SongContext";
@@ -13,6 +14,7 @@ import { usePlayer } from "@/context/PlayerContext";
 import { useUser } from "@/context/User";
 import Loader from "@/components/Loader";
 import { TrackComponent } from "@/components/Component";
+import { ActivityIndicator } from "react-native-paper";
 
 const LocalSongsScreen = () => {
   const { songUrl, setSongUrl } = useSong();
@@ -23,12 +25,13 @@ const LocalSongsScreen = () => {
   const [loading, setLoading] = useState(false);
   const { setCurrentQueue } = usePlayer();
   const { userInfo, setUserInfo } = useUser();
+  const [token, setToken] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   const { height } = Dimensions.get("window");
 
   const fetchLocals = async () => {
     try {
-      
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
@@ -41,11 +44,15 @@ const LocalSongsScreen = () => {
       }
 
       setLoading(true);
-      const { assets } = await MediaLibrary.getAssetsAsync({
-        mediaType: MediaLibrary.MediaType.audio,
-        sortBy: MediaLibrary.SortBy.modificationTime,
-      });
-      console.log("First asset:", assets[0]);
+      const { assets, endCursor, hasNextPage } =
+        await MediaLibrary.getAssetsAsync({
+          mediaType: MediaLibrary.MediaType.audio,
+          sortBy: MediaLibrary.SortBy.modificationTime,
+        });
+      setHasMore(hasNextPage);
+      if (hasNextPage) {
+        setToken(endCursor);
+      }
       setSongs(assets);
       setLoading(false);
     } catch (error) {
@@ -73,11 +80,48 @@ const LocalSongsScreen = () => {
     filename: item.filename || "Unknown Song", // For display
   });
 
+  const loadMore = async () => {
+    try {
+      if (hasMore) {
+        const { assets, endCursor, hasNextPage } =
+          await MediaLibrary.getAssetsAsync({
+            mediaType: MediaLibrary.MediaType.audio,
+            sortBy: MediaLibrary.SortBy.modificationTime,
+            after: token,
+          });
+        // console.log(assets);
+        setSongs([...songs, ...assets]);
+        setHasMore(hasNextPage);
+        if (hasNextPage) {
+          setToken(endCursor);
+        }
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const footerItem = () => {
+    return (
+      <View
+        style={{
+          width: "100%",
+          height: 60,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <ActivityIndicator size={"large"} color="#fff" />
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       {loading ? (
         <Loader isLoading={loading} />
-      ) : songs.length > 0 ? (
+      ) : songs?.length > 0 ? (
         <FlatList
           data={songs}
           keyExtractor={(item) => item.id}
@@ -98,6 +142,12 @@ const LocalSongsScreen = () => {
           scrollEnabled={true}
           alwaysBounceVertical
           showsVerticalScrollIndicator={false}
+          onEndReached={() => {
+            if (token !== 0) {
+              loadMore();
+            }
+          }}
+          ListFooterComponent={hasMore && footerItem}
         />
       ) : (
         <Text style={styles.noResults}>No Local Songs Found!!</Text>
