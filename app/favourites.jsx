@@ -3,25 +3,16 @@ import {
   View,
   Text,
   FlatList,
-  Image,
-  TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Dimensions,
 } from "react-native";
 import { useSong } from "@/context/SongContext";
 import {
   getFavourites,
-  getRecentlyPlayed,
   handleLike,
-  removeFromFavourites,
-  saveToFavourites,
-  saveToRecentlyPlayed,
 } from "@/constants/cachedData";
 import { usePlayer } from "@/context/PlayerContext";
 import { useUser } from "@/context/User";
-import { Ionicons } from "@expo/vector-icons";
-import { handleLiked } from "@/constants/apiCalls";
 import { TrackComponent } from "@/components/Component";
 
 const Favourites = () => {
@@ -41,7 +32,7 @@ const Favourites = () => {
 
   useEffect(() => {
     getFav();
-  }, []);
+  }, [handleLike]);
 
   return (
     <View style={styles.container}>

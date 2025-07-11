@@ -225,7 +225,9 @@ export const handleLike = async (userInfo, setFavorites, currentSong) => {
     // Get current favorites from local storage (or empty array)
     const currentFavourites = (await getFavourites()) || [];
     const isLiked = currentFavourites.some(
-      (item) => item.videoId === currentSong.videoId
+      (item) =>
+        (item?.videoId || item?.id) ===
+        (currentSong?.videoId || currentSong?.id)
     );
 
     // Show immediate toast for user feedback

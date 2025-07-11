@@ -696,8 +696,8 @@ const NowPlayingScreen = React.memo(
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.miniPlayerIcon}
-                  onPress={() =>
-                    handleLike(userInfo, setFavorites, currentSong)
+                  onPress={async () =>
+                    await handleLike(userInfo, setFavorites, currentSong)
                   }
                 >
                   {favorites.find(
@@ -805,26 +805,6 @@ const MiniPlayer = ({
   const { currentSong } = useSong();
   const [favorites, setFavorites] = useState([]);
 
-  const handleLike = async () => {
-    if (!userInfo) {
-      Alert.alert("Error!", "Please Sign In To Add Tracks to Favourites");
-    } else {
-      const fav = await getFavourites();
-      if (fav.find((item) => item.videoId === currentSong.videoId)) {
-        const newFav = await removeFromFavourites(currentSong);
-        setFavorites(newFav);
-        const data = await handleLiked(userInfo?.email, currentSong);
-        console.log(data);
-      } else {
-        fav.push(currentSong);
-        await saveToFavourites(fav);
-        const data = await handleLiked(userInfo?.email, currentSong);
-        setFavorites(fav);
-        await saveToFavourites(data.favourites);
-      }
-    }
-  };
-
   const getFav = async () => {
     if (userInfo) {
       const data = await getFavourites();
@@ -883,7 +863,7 @@ const MiniPlayer = ({
         <TouchableOpacity
           style={styles.miniPlayerIcon}
           onPress={async () => {
-            handleLike();
+            await handleLike(userInfo, setFavorites, currentSong);
           }}
         >
           {favorites.find(

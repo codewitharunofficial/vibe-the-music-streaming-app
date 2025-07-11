@@ -32,31 +32,49 @@ const SearchScreen = () => {
   const fetchSongs = async () => {
     if (query.trim() === "") return;
 
-    setLoading(true);
+    !token && setLoading(true);
     const options = {
       method: "GET",
       url: "https://youtube-music-api3.p.rapidapi.com/search",
       params: {
         q: query,
         type: "song",
+        nextPage: token ? token : "",
       },
       headers: {
-        "x-rapidapi-key": "b1c26628e0msh3fbbf13ea24b4abp184561jsna2ebae86e910",
-        "x-rapidapi-host": "youtube-music-api3.p.rapidapi.com",
+        "x-rapidapi-key": process.env.EXPO_PUBLIC_API_KEY_1,
+        "x-rapidapi-host": process.env.EXPO_PUBLIC_API_HOST_1,
       },
     };
 
     try {
       const { data } = await axios.request(options);
       if (data?.result) {
-        setSongs(data?.result);
-        setToken(data?.nextPageToken);
+        console.log(data);
+        setSongs([...songs, ...data?.result]);
+        data?.nextPageToken ? setToken(data?.nextPageToken) : setToken("");
       }
     } catch (error) {
       console.error(error);
     }
 
     setLoading(false);
+  };
+
+  const footerItem = () => {
+    return (
+      <View
+        style={{
+          width: "100%",
+          height: 60,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <ActivityIndicator size={"large"} color="#fff" />
+      </View>
+    );
   };
 
   return (
@@ -91,7 +109,7 @@ const SearchScreen = () => {
       ) : songs?.length > 0 ? (
         <FlatList
           data={songs}
-          keyExtractor={(item) => item?.videoId.toString()}
+          keyExtractor={(item, index) => index?.toString()}
           renderItem={({ item, index }) => (
             <TrackComponent
               item={item}
@@ -107,6 +125,8 @@ const SearchScreen = () => {
           )}
           showsVerticalScrollIndicator={false}
           alwaysBounceVertical
+          onEndReached={fetchSongs}
+          ListFooterComponent={token && footerItem}
         />
       ) : (
         <Text style={styles.noResults}>No songs found.</Text>
