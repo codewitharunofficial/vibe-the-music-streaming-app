@@ -73,7 +73,11 @@ const SongCard = ({
     >
       <Image
         source={{
-          uri: song?.songs?.thumbnail || song?.thumbnail || song?.poster,
+          uri:
+            song?.songs[0]?.thumbnail?.url ||
+            song?.songs[0]?.thumbnail[0]?.url ||
+            song?.thumbnail ||
+            song?.poster,
         }}
         style={styles.image}
       />

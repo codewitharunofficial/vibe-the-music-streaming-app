@@ -36,7 +36,7 @@ const Favourites = () => {
 
   return (
     <View style={styles.container}>
-      {/* Songs List */}
+      
       {loading ? (
         <ActivityIndicator
           size="large"
@@ -61,7 +61,7 @@ const Favourites = () => {
               playingFrom={"Favourites"}
             />
           )}
-          // contentContainerStyle={{ flexDirection: "column-reverse" }}
+          
           scrollEnabled={true}
           alwaysBounceVertical
           showsVerticalScrollIndicator={false}

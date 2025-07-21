@@ -92,9 +92,20 @@ const SearchScreen = () => {
           placeholderTextColor="#AAA"
           value={query}
           onChangeText={setQuery}
-          onSubmitEditing={fetchSongs}
+          onSubmitEditing={() => {
+            setSongs([]);
+            fetchSongs();
+            setToken("");
+          }}
         />
-        <TouchableOpacity onPress={fetchSongs} style={styles.searchButton}>
+        <TouchableOpacity
+          onPress={() => {
+            setSongs([]);
+            fetchSongs();
+            setToken("");
+          }}
+          style={styles.searchButton}
+        >
           <Ionicons name="search" size={24} color="white" />
         </TouchableOpacity>
       </View>
