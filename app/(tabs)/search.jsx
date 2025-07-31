@@ -32,7 +32,36 @@ const SearchScreen = () => {
   const fetchSongs = async () => {
     if (query.trim() === "") return;
 
-    !token && setLoading(true);
+    setLoading(true);
+    const options = {
+      method: "GET",
+      url: "https://youtube-music-api3.p.rapidapi.com/search",
+      params: {
+        q: query,
+        type: "song",
+      },
+      headers: {
+        "x-rapidapi-key": process.env.EXPO_PUBLIC_API_KEY_1,
+        "x-rapidapi-host": process.env.EXPO_PUBLIC_API_HOST_1,
+      },
+    };
+
+    try {
+      const { data } = await axios.request(options);
+      if (data?.result) {
+        setSongs(data?.result);
+        data?.nextPageToken ? setToken(data?.nextPageToken) : setToken("");
+      }
+    } catch (error) {
+      console.error(error);
+    }
+
+    setLoading(false);
+  };
+
+  const loadMoreSongs = async () => {
+    if (!token) return;
+    token && setLoading(true);
     const options = {
       method: "GET",
       url: "https://youtube-music-api3.p.rapidapi.com/search",
@@ -93,16 +122,14 @@ const SearchScreen = () => {
           value={query}
           onChangeText={setQuery}
           onSubmitEditing={() => {
-            setSongs([]);
+
             fetchSongs();
-            setToken("");
           }}
         />
         <TouchableOpacity
           onPress={() => {
-            setSongs([]);
+
             fetchSongs();
-            setToken("");
           }}
           style={styles.searchButton}
         >
@@ -136,7 +163,7 @@ const SearchScreen = () => {
           )}
           showsVerticalScrollIndicator={false}
           alwaysBounceVertical
-          onEndReached={fetchSongs}
+          onEndReached={loadMoreSongs}
           ListFooterComponent={token && footerItem}
         />
       ) : (

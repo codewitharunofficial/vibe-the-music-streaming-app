@@ -3,7 +3,7 @@
     "name": "Vibe",
     "slug": "vibe",
     "scheme": "vibe",
-    "version": "1.0.0",
+    "version": "3.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",

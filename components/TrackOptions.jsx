@@ -9,8 +9,8 @@ import {
   ActivityIndicator,
   Image,
   Dimensions,
-  ToastAndroid,
 } from "react-native";
+import { showToast } from "@/constants/utils";
 import { AntDesign, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useUser } from "@/context/User";
 import TrackPlayer from "react-native-track-player";
@@ -144,7 +144,7 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
                 );
                 await TrackPlayer.remove(indexToremove);
                 handleRemove(indexToremove);
-                ToastAndroid.show("Song Removed From The Queue");
+                showToast("Song Removed From The Queue");
               }}
             >
               <Ionicons name="remove" size={24} color="white" />
@@ -156,7 +156,7 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
               onPress={async () => {
                 await TrackPlayer.add(song);
                 setCurrentQueue([...currentQueue, song]);
-                ToastAndroid.show("Song Added To The Queue", 2000);
+                showToast("Song Added To The Queue", 2000);
               }}
               disabled={currentQueue.length < 1}
             >

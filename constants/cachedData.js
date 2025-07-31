@@ -3,8 +3,8 @@ import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system";
 import { playASongs } from "./player";
 import { handleLiked } from "./liked";
-import { ToastAndroid } from "react-native";
 import { NativeModules } from "react-native";
+import { showToast } from "./utils";
 
 export const saveToRecentlyPlayed = async (song) => {
   console.log(song);
@@ -231,9 +231,9 @@ export const handleLike = async (userInfo, setFavorites, currentSong) => {
     );
 
     // Show immediate toast for user feedback
-    ToastAndroid.show(
+    showToast(
       isLiked ? "Removing from Favourites..." : "Adding to Favourites...",
-      ToastAndroid.SHORT
+      3000
     );
 
     // Call API to toggle like status on server
@@ -246,16 +246,16 @@ export const handleLike = async (userInfo, setFavorites, currentSong) => {
       // Update UI state
       setFavorites(data.favourites);
 
-      ToastAndroid.show(
+      showToast(
         isLiked ? "Removed from Favourites" : "Added to Favourites",
-        ToastAndroid.SHORT
+        3000
       );
     } else {
       throw new Error("Invalid server response");
     }
   } catch (error) {
     console.error("Error handling like:", error);
-    ToastAndroid.show("Error updating favourites", ToastAndroid.SHORT);
+    showToast("Error updating favourites", 3000);
   }
 };
 
