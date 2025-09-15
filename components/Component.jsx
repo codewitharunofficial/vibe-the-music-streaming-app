@@ -342,6 +342,7 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
       onSwipeRelease={() => {
         onClose();
       }}
+
     >
       <ModalContent
         style={{
@@ -359,6 +360,7 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
           ref={flatListRef}
           initialScrollIndex={currentIndex}
           data={queue}
+          maxToRenderPerBatch={10}
           getItemLayout={(data, index) => ({
             length: 60,
             offset: 60 * index,
@@ -391,7 +393,7 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
                 />
                 <View style={{ flexDirection: "column", flex: 1 }}>
                   <View style={{ overflow: 'hidden', width: containerWidth }}>
-                    <Animated.View style={{ transform: [{ translateX: titleAnim }] }}>
+                    <Animated.View style={{ transform: [{ translateX: (currentSong?.id || currentSong?.videoId) === (item.id || item.videoId) ? artistAnim : 0 }] }}>
                       <Text
                         style={styles.songTitle}
                         numberOfLines={1}
@@ -402,7 +404,7 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
                     </Animated.View>
                   </View>
                   <View style={{ overflow: 'hidden', width: containerWidth }}>
-                    <Animated.View style={{ transform: [{ translateX: artistAnim }] }}>
+                    <Animated.View style={{ transform: [{ translateX: (currentSong?.id || currentSong?.videoId) === (item.id || item.videoId) ? artistAnim : 0 }] }}>
                       <Text
                         style={styles.artist}
                         numberOfLines={1}
@@ -413,15 +415,7 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
                     </Animated.View>
                   </View>
                 </View>
-                {(item?.videoId || item.id) ===
-                  (currentSong?.videoId || currentSong?.id) && (
-                    <MaterialIcons
-                      name="equalizer"
-                      size={24}
-                      color={"#fff"}
-                      style={{ position: "absolute", top: 20, right: 80 }}
-                    />
-                  )}
+
                 <TouchableOpacity
                   onPress={() => {
                     setModalVisible(true);
@@ -1243,7 +1237,7 @@ const TrackComponent = ({
 
       console.log("Songs To Be Added In The Queue: ", songs);
 
-      const newQueue = songs.slice(index, songs.length);
+      const newQueue = songs.slice(index, songs.length > 10 ? 10 : songs.length);
       setCurrentQueue(newQueue);
 
       const tracks = newQueue.map((s) => ({

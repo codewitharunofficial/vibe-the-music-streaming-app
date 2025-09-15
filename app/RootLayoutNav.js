@@ -1,53 +1,38 @@
-import React, { useEffect, useState } from "react";
-import { router, Stack, useSegments } from "expo-router";
+import React, { useEffect } from "react";
+import { Stack, useSegments } from "expo-router";
 import {
-  Alert,
-  Linking,
   SafeAreaView,
-  ActivityIndicator,
-  View,
-  Text,
   TouchableOpacity,
 } from "react-native";
 import { ModalPortal } from "react-native-modals";
-import * as Updates from "expo-updates";
 import { useSong } from "@/context/SongContext";
-import { usePlayer } from "@/context/PlayerContext";
 import {
   MiniPlayer,
-  MiniPlayerProgress,
   NowPlayingScreen,
 } from "@/components/Component";
 import { useColorScheme } from "@/components/useColorScheme";
 import {
   ThemeProvider,
   DarkTheme,
-  DefaultTheme,
 } from "@react-navigation/native";
 import TrackPlayer, { Capability, RepeatMode, AppKilledPlaybackBehavior } from "react-native-track-player";
 import { trackPlayerService } from "@/trackPlayerService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useUser } from "@/context/User";
 import { saveToFavourites } from "@/constants/cachedData";
-import SongOptionsModal from "@/components/OptionsOnNowPlaying";
-import axios from "axios";
 import { addToRNTPQueue, moveSong } from "@/constants/queue";
 import { EvilIcons } from "@expo/vector-icons";
 import { fetchUserPlaylists } from "@/constants/apiCalls";
 import TrackOptionModal from "@/components/TrackOptions";
 
 export default function RootLayoutNav() {
-  const colorScheme = useColorScheme();
   const {
     songUrl,
-    setSongUrl,
     isSongLoading,
-    setIsSongLoading,
     currentSong,
     setCurrentSong,
     open,
     setOpen,
-    currentQueue,
   } = useSong();
   const { isPlaying, setIsPlaying, isModalOpen, setIsModalOpen, selectedTrack } = useSong();
   const { playlistName, setUserPlaylist } = useUser();
@@ -59,7 +44,6 @@ export default function RootLayoutNav() {
 
   const getUserInfo = async () => {
     const user = JSON.parse(await AsyncStorage.getItem("userInfo"));
-    // console.log(user);
     if (user) {
       setUserInfo(user);
     } else {
@@ -260,16 +244,4 @@ export default function RootLayoutNav() {
   );
 }
 
-const styles = {
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#121212",
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: "white",
-  },
-};
+
