@@ -3,31 +3,23 @@ import {
   View,
   Text,
   FlatList,
-  Image,
-  TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Dimensions,
 } from "react-native";
 import { useSong } from "@/context/SongContext";
 import {
   getFavourites,
-  getRecentlyPlayed,
-  removeFromFavourites,
-  saveToFavourites,
-  saveToRecentlyPlayed,
+  handleLike,
 } from "@/constants/cachedData";
 import { usePlayer } from "@/context/PlayerContext";
 import { useUser } from "@/context/User";
-import { Ionicons } from "@expo/vector-icons";
-import { handleLiked } from "@/constants/apiCalls";
 import { TrackComponent } from "@/components/Component";
 
 const Favourites = () => {
   const { setSongUrl } = useSong();
   const { setIsSongLoading } = useSong();
   const { setCurrentSong } = useSong();
-  const { open, setOpen } = useSong();
+  useSong();
   const [loading, setLoading] = useState(false);
   const { setCurrentQueue } = usePlayer();
   const [favorites, setFavorites] = useState([]);
@@ -38,28 +30,13 @@ const Favourites = () => {
     setFavorites(data?.reverse());
   };
 
-  const handleLike = async (song) => {
-    try {
-      const fav = await getFavourites();
-      if (fav.find((item) => item.videoId === song.videoId)) {
-        const newFav = await removeFromFavourites(song);
-        setFavorites(newFav?.reverse());
-        const data = await handleLiked(userInfo?.email, song);
-        setFavorites(data?.favourites?.reverse());
-        await saveToFavourites(data?.favourites);
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
   useEffect(() => {
     getFav();
-  }, []);
+  }, [handleLike]);
 
   return (
     <View style={styles.container}>
-      {/* Songs List */}
+      
       {loading ? (
         <ActivityIndicator
           size="large"
@@ -84,7 +61,7 @@ const Favourites = () => {
               playingFrom={"Favourites"}
             />
           )}
-          // contentContainerStyle={{ flexDirection: "column-reverse" }}
+          
           scrollEnabled={true}
           alwaysBounceVertical
           showsVerticalScrollIndicator={false}

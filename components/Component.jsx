@@ -12,9 +12,9 @@ import {
   Animated,
   Alert,
   Easing,
-  ToastAndroid,
   ImageBackground,
 } from "react-native";
+import { showToast } from "@/constants/utils";
 import {
   Ionicons,
   MaterialIcons,
@@ -188,28 +188,90 @@ const MusicSections = ({ data, onPlayPress, onLikePress }) => {
 };
 
 const QueueModal = ({ isVisible, onClose, queue }) => {
-  const { setIsSongLoading, currentSong, setCurrentSong, setSongUrl } =
-    useSong();
-
+  const { setIsSongLoading, currentSong, setCurrentSong, setSongUrl } = useSong();
   const [modalVisible, setModalVisible] = useState(false);
-
-  const close = () => setModalVisible(false);
-
   const { userInfo } = useUser();
   const { currentIndex, setCurrentIndex } = usePlayer();
   const [selectedTrack, setSelectedTrack] = useState(null);
   const flatListRef = useRef(null);
 
+  // Track text widths and animations for each item
+  const [textWidths, setTextWidths] = useState({}); // Store title and artist widths: { [itemId]: { title: number, artist: number } }
+  const animations = useRef({}); // Store Animated.Value for each item: { [itemId]: { titleAnim: Animated.Value, artistAnim: Animated.Value } }
+
+  // Initialize animations for an item
+  const initializeAnimations = useCallback((itemId) => {
+    if (!animations.current[itemId]) {
+      animations.current[itemId] = {
+        titleAnim: new Animated.Value(0),
+        artistAnim: new Animated.Value(0),
+      };
+    }
+    return animations.current[itemId];
+  }, []);
+
+  // Marquee Animation Logic
+  const startMarquee = useCallback((animValue, textWidth, containerWidth) => {
+    if (textWidth > containerWidth) {
+      const duration = textWidth * 20; // Adjust speed: 20ms per pixel
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(animValue, {
+            toValue: -textWidth,
+            duration: duration,
+            useNativeDriver: true,
+            delay: 1000, // Pause before starting
+            easing: Easing.linear,
+          }),
+          Animated.timing(animValue, {
+            toValue: containerWidth,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      animValue.setValue(0); // Reset if text fits
+    }
+  }, []);
+
+  // Handle text layout to measure width
+  const handleTextLayout = useCallback((itemId, type, e) => {
+    const width = e.nativeEvent.layout.width;
+    setTextWidths((prev) => ({
+      ...prev,
+      [itemId]: {
+        ...prev[itemId],
+        [type]: width,
+      },
+    }));
+  }, []);
+
+  // Start animations when text widths or queue changes
+  useEffect(() => {
+    queue.forEach((item) => {
+      const itemId = item?.videoId?.toString() || item?.id?.toString();
+      const { titleAnim, artistAnim } = initializeAnimations(itemId);
+      const widths = textWidths[itemId] || {};
+      const containerWidth = width - 180; // Adjust based on layout (image, padding, icons, etc.)
+      startMarquee(titleAnim, widths.title || 0, containerWidth);
+      startMarquee(artistAnim, widths.artist || 0, containerWidth);
+    });
+  }, [queue, textWidths, startMarquee, initializeAnimations]);
+
+  // Clean up animations when component unmounts
+  useEffect(() => {
+    return () => {
+      Object.values(animations.current).forEach(({ titleAnim, artistAnim }) => {
+        titleAnim.stopAnimation();
+        artistAnim.stopAnimation();
+      });
+    };
+  }, []);
+
   useEffect(() => {
     TrackPlayer.getActiveTrackIndex().then((index) => {
-      setCurrentIndex(index); // Update context/state
-      // if (index !== -1 && flatListRef.current) {
-      //   flatListRef.current.scrollToIndex({
-      //     index,
-      //     animated: true,
-      //     viewPosition: 0.5,
-      //   });
-      // }
+      setCurrentIndex(index);
     });
   }, [isVisible, currentIndex]);
 
@@ -226,7 +288,7 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
 
     const item = arr.splice(fromIndex, 1)[0];
     arr.splice(toIndex, 0, item);
-    console.log(`The Song HAs been moved from ${fromIndex} to ${toIndex}`);
+    console.log(`The Song has been moved from ${fromIndex} to ${toIndex}`);
     return arr;
   }
 
@@ -269,6 +331,8 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
     }
   };
 
+  const close = () => setModalVisible(false);
+
   return (
     <BottomModal
       onTouchOutside={() => console.log("Touched Outside")}
@@ -279,6 +343,7 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
       onSwipeRelease={() => {
         onClose();
       }}
+
     >
       <ModalContent
         style={{
@@ -296,6 +361,7 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
           ref={flatListRef}
           initialScrollIndex={currentIndex}
           data={queue}
+          maxToRenderPerBatch={10}
           getItemLayout={(data, index) => ({
             length: 60,
             offset: 60 * index,
@@ -304,48 +370,66 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
           keyExtractor={(item) =>
             item?.videoId?.toString() || item?.id?.toString()
           }
-          renderItem={({ item, index }) => (
-            <TouchableOpacity
-              onPress={async () => {
-                await TrackPlayer.skip(index);
-              }}
-              style={styles.songItem}
-            >
-              <Image
-                source={{
-                  uri:
-                    item.thumbnail?.url ||
-                    item.thumbnail ||
-                    item.artwork ||
-                    "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
-                }}
-                style={{ height: 50, width: 50, padding: 10, borderRadius: 10 }}
-              />
-              <View style={{ flexDirection: "column" }}>
-                <Text style={styles.songTitle}>{item.title?.slice(0, 20)}</Text>
-                <Text style={styles.artist}>{item.author?.slice(0, 20)}</Text>
-              </View>
-              {(item?.videoId || item.id) ===
-                (currentSong.videoId || currentSong.id) && (
-                <MaterialIcons
-                  name="equalizer"
-                  size={24}
-                  color={"#fff"}
-                  style={{ position: "absolute", top: 20, right: 80 }}
-                />
-              )}
+          renderItem={({ item, index }) => {
+            const itemId = item?.videoId?.toString() || item?.id?.toString();
+            const { titleAnim, artistAnim } = initializeAnimations(itemId);
+            const containerWidth = width - 180; // Adjust based on layout
+
+            return (
               <TouchableOpacity
-                onPress={() => {
-                  setModalVisible(true);
-                  setCurrentIndex(index);
-                  setSelectedTrack(item);
+                onPress={async () => {
+                  await TrackPlayer.skip(index);
                 }}
-                style={{ position: "absolute", top: 20, right: 10 }}
+                style={styles.songItem}
               >
-                <Entypo name="dots-three-vertical" size={24} color="#fff" />
+                <Image
+                  source={{
+                    uri:
+                      item.thumbnail?.url ||
+                      item.thumbnail ||
+                      item.artwork ||
+                      "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
+                  }}
+                  style={{ height: 50, width: 50, padding: 10, borderRadius: 10 }}
+                />
+                <View style={{ flexDirection: "column", flex: 1 }}>
+                  <View style={{ overflow: 'hidden', width: containerWidth }}>
+                    <Animated.View style={{ transform: [{ translateX: (currentSong?.id || currentSong?.videoId) === (item.id || item.videoId) ? artistAnim : 0 }] }}>
+                      <Text
+                        style={styles.songTitle}
+                        numberOfLines={1}
+                        onLayout={(e) => handleTextLayout(itemId, 'title', e)}
+                      >
+                        {item.title || "Unknown Title"}
+                      </Text>
+                    </Animated.View>
+                  </View>
+                  <View style={{ overflow: 'hidden', width: containerWidth }}>
+                    <Animated.View style={{ transform: [{ translateX: (currentSong?.id || currentSong?.videoId) === (item.id || item.videoId) ? artistAnim : 0 }] }}>
+                      <Text
+                        style={styles.artist}
+                        numberOfLines={1}
+                        onLayout={(e) => handleTextLayout(itemId, 'artist', e)}
+                      >
+                        {item.author || "Unknown Artist"}
+                      </Text>
+                    </Animated.View>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    setModalVisible(true);
+                    setCurrentIndex(index);
+                    setSelectedTrack(item);
+                  }}
+                  style={{ position: "absolute", top: 20, right: 10 }}
+                >
+                  <Entypo name="dots-three-vertical" size={24} color="#fff" />
+                </TouchableOpacity>
               </TouchableOpacity>
-            </TouchableOpacity>
-          )}
+            );
+          }}
           contentContainerStyle={{ paddingBottom: 20 }}
         />
       </ModalContent>
@@ -359,6 +443,7 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
     </BottomModal>
   );
 };
+
 
 const NowPlayingScreen = React.memo(
   ({ isVisible, setIsVisible, isSongLoading }) => {
@@ -383,7 +468,55 @@ const NowPlayingScreen = React.memo(
     const [downloaded, setDownloaded] = useState([]);
     const [currentDownload, setCurrentDownload] = useState(null);
 
-    // Handle Track Change and Sync UI
+    // Animation-related state
+    const titleAnim = useRef(new Animated.Value(0)).current;
+    const artistAnim = useRef(new Animated.Value(0)).current;
+    const [titleWidth, setTitleWidth] = useState(0);
+    const [artistWidth, setArtistWidth] = useState(0);
+    const [containerWidth, setContainerWidth] = useState(width - 40); // Adjust based on padding/margins
+
+    // Handle Text Layout to measure text width
+    const handleTitleLayout = (e) => {
+      setTitleWidth(e.nativeEvent.layout.width);
+    };
+
+    const handleArtistLayout = (e) => {
+      setArtistWidth(e.nativeEvent.layout.width);
+    };
+
+    // Marquee Animation Logic
+    const startMarquee = useCallback((animValue, textWidth) => {
+      if (textWidth > containerWidth) {
+        const duration = textWidth * 20; // Adjust speed: 20ms per pixel
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(animValue, {
+              toValue: -textWidth,
+              duration: duration,
+              useNativeDriver: true,
+              delay: 1000, // Pause before starting
+            }),
+            Animated.timing(animValue, {
+              toValue: containerWidth,
+              duration: 0,
+              useNativeDriver: true,
+            }),
+          ])
+        ).start();
+      } else {
+        animValue.setValue(0); // Reset if text fits
+      }
+    }, [containerWidth]);
+
+    // Reset and start animation when song changes or text width updates
+    useEffect(() => {
+      titleAnim.setValue(0);
+      artistAnim.setValue(0);
+      startMarquee(titleAnim, titleWidth);
+      startMarquee(artistAnim, artistWidth);
+    }, [currentSong, titleWidth, artistWidth, startMarquee, titleAnim, artistAnim]);
+
+    // Rest of your existing useEffect and handler functions remain unchanged
     const handleTrackChange = useCallback(async () => {
       try {
         const activeTrackIndex = await TrackPlayer.getActiveTrackIndex();
@@ -410,7 +543,6 @@ const NowPlayingScreen = React.memo(
       }
     }, [currentQueue, currentIndex, playbackState.state]);
 
-    // Add Event Listeners for Track Change and Queue End
     useEffect(() => {
       if (isInitialMount.current) {
         handleTrackChange();
@@ -441,8 +573,13 @@ const NowPlayingScreen = React.memo(
         Event.PlaybackError,
         (error) => {
           console.error("Playback error:", error);
+<<<<<<< HEAD
           ToastAndroid.show("Error playing song", ToastAndroid.SHORT);
         },
+=======
+          showToast("Error playing song", 3000);
+        }
+>>>>>>> 602a3f2f2f114bdbe6e64b9d4a17c51558214994
       );
 
       return () => {
@@ -452,7 +589,6 @@ const NowPlayingScreen = React.memo(
       };
     }, [handleTrackChange]);
 
-    //  Update Service with Current Queue and Index
     const updateService = useCallback(() => {
       if (typeof updateServiceData === "function") {
         updateServiceData(currentQueue, userInfo, currentIndex);
@@ -468,7 +604,6 @@ const NowPlayingScreen = React.memo(
       updateService();
     }, [updateService]);
 
-    //  Playback Controls
     const playPause = useCallback(async () => {
       try {
         if (playbackState.state === State.Playing) {
@@ -556,7 +691,6 @@ const NowPlayingScreen = React.memo(
       return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
     }, []);
 
-    // Fetch Favorites
     const getFav = async () => {
       if (userInfo) {
         const data = await getFavourites();
@@ -624,12 +758,28 @@ const NowPlayingScreen = React.memo(
             style={styles.nowPlayingImage}
             resizeMode="cover"
           />
-          <Text style={styles.nowPlayingTitle} numberOfLines={1}>
-            {currentSong.title || "Unknown Title"}
-          </Text>
-          <Text style={styles.nowPlayingArtist} numberOfLines={1}>
-            {currentSong.author || currentSong.artist || "Unknown Artist"}
-          </Text>
+          <View style={{ overflow: 'hidden', width: containerWidth }}>
+            <Animated.View style={{ transform: [{ translateX: titleAnim }] }}>
+              <Text
+                style={styles.nowPlayingTitle}
+                numberOfLines={1}
+                onLayout={handleTitleLayout}
+              >
+                {currentSong.title || "Unknown Title"}
+              </Text>
+            </Animated.View>
+          </View>
+          <View style={{ overflow: 'hidden', width: containerWidth }}>
+            <Animated.View style={{ transform: [{ translateX: artistAnim }] }}>
+              <Text
+                style={styles.nowPlayingArtist}
+                numberOfLines={1}
+                onLayout={handleArtistLayout}
+              >
+                {currentSong.author || currentSong.artist || "Unknown Artist"}
+              </Text>
+            </Animated.View>
+          </View>
           {playingFrom !== "Local" && (
             <View
               style={[styles.nowPlayingControls, { paddingHorizontal: 10 }]}
@@ -648,7 +798,7 @@ const NowPlayingScreen = React.memo(
                   disabled={
                     (isDownloading || isDownloaded) &&
                     (currentDownload?.id || currentDownload?.videoId) ===
-                      (currentSong?.id || currentSong?.videoId)
+                    (currentSong?.id || currentSong?.videoId)
                   }
                   style={[
                     styles.shareButton,
@@ -661,13 +811,13 @@ const NowPlayingScreen = React.memo(
                       setDownloadProgess,
                       setCurrentDownload,
                     );
-                    ToastAndroid.show("Song Downloaded", ToastAndroid.SHORT);
+                    showToast("Song Downloaded", 3000);
                     setIsDownloading(false);
                     setIsDownloaded(true);
                   }}
                 >
                   {isDownloading &&
-                  (currentDownload?.id || currentDownload?.videoId) ===
+                    (currentDownload?.id || currentDownload?.videoId) ===
                     (currentSong?.id || currentSong?.videoId) ? (
                     <View
                       style={{
@@ -683,8 +833,13 @@ const NowPlayingScreen = React.memo(
                       </Text>
                     </View>
                   ) : downloaded.find(
+<<<<<<< HEAD
                       (s) => s.id === (currentSong.id || currentSong.videoId),
                     ) ? (
+=======
+                    (s) => s.id === (currentSong.id || currentSong.videoId)
+                  ) ? (
+>>>>>>> 602a3f2f2f114bdbe6e64b9d4a17c51558214994
                     <FontAwesome
                       name="check-circle"
                       size={25}
@@ -697,8 +852,8 @@ const NowPlayingScreen = React.memo(
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.miniPlayerIcon}
-                  onPress={() =>
-                    handleLike(userInfo, setFavorites, currentSong)
+                  onPress={async () =>
+                    await handleLike(userInfo, setFavorites, currentSong)
                   }
                 >
                   {favorites.find(
@@ -801,7 +956,64 @@ const NowPlayingScreen = React.memo(
   },
 );
 
-// export default NowPlayingScreen;
+// Example styles (adjust as needed)
+// const styles = {
+//   header: {
+//     color: '#fff',
+//     fontSize: 18,
+//     fontWeight: 'bold',
+//     textAlign: 'center',
+//   },
+//   nowPlayingImage: {
+//     width: width - 40,
+//     height: width - 40,
+//     borderRadius: 10,
+//     alignSelf: 'center',
+//     marginVertical: 20,
+//   },
+//   nowPlayingTitle: {
+//     color: '#fff',
+//     fontSize: 20,
+//     fontWeight: 'bold',
+//     textAlign: 'center',
+//     marginVertical: 5,
+//   },
+//   nowPlayingArtist: {
+//     color: '#ccc',
+//     fontSize: 16,
+//     textAlign: 'center',
+//     marginBottom: 20,
+//   },
+//   nowPlayingControls: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     alignItems: 'center',
+//     paddingHorizontal: 20,
+//   },
+//   shareButton: {
+//     padding: 10,
+//   },
+//   miniPlayerIcon: {
+//     padding: 10,
+//   },
+//   sliderContainer: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     paddingHorizontal: 20,
+//     marginVertical: 10,
+//   },
+//   slider: {
+//     flex: 1,
+//     marginHorizontal: 10,
+//   },
+//   timeText: {
+//     color: '#fff',
+//     fontSize: 12,
+//   },
+// };
+
+
+
 
 const MiniPlayer = ({
   song,
@@ -815,26 +1027,6 @@ const MiniPlayer = ({
   const { userInfo } = useUser();
   const { currentSong } = useSong();
   const [favorites, setFavorites] = useState([]);
-
-  const handleLike = async () => {
-    if (!userInfo) {
-      Alert.alert("Error!", "Please Sign In To Add Tracks to Favourites");
-    } else {
-      const fav = await getFavourites();
-      if (fav.find((item) => item.videoId === currentSong.videoId)) {
-        const newFav = await removeFromFavourites(currentSong);
-        setFavorites(newFav);
-        const data = await handleLiked(userInfo?.email, currentSong);
-        console.log(data);
-      } else {
-        fav.push(currentSong);
-        await saveToFavourites(fav);
-        const data = await handleLiked(userInfo?.email, currentSong);
-        setFavorites(fav);
-        await saveToFavourites(data.favourites);
-      }
-    }
-  };
 
   const getFav = async () => {
     if (userInfo) {
@@ -899,7 +1091,7 @@ const MiniPlayer = ({
         <TouchableOpacity
           style={styles.miniPlayerIcon}
           onPress={async () => {
-            handleLike();
+            await handleLike(userInfo, setFavorites, currentSong);
           }}
         >
           {favorites.find(
@@ -944,8 +1136,59 @@ const TrackComponent = ({
   const [favorites, setFavorites] = useState([]);
   const { isPlaying, setIsPlaying, setPlayingFrom } = usePlayer();
 
+  // Existing rotation animation
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
+  // Marquee animation state
+  const titleAnim = useRef(new Animated.Value(0)).current;
+  const artistAnim = useRef(new Animated.Value(0)).current;
+  const [titleWidth, setTitleWidth] = useState(0);
+  const [artistWidth, setArtistWidth] = useState(0);
+  const containerWidth = width * 0.4; // Adjust based on layout (e.g., 50% of screen width)
+
+  // Handle Text Layout to measure text width
+  const handleTitleLayout = (e) => {
+    setTitleWidth(e.nativeEvent.layout.width);
+  };
+
+  const handleArtistLayout = (e) => {
+    setArtistWidth(e.nativeEvent.layout.width);
+  };
+
+  // Marquee Animation Logic
+  const startMarquee = useCallback((animValue, textWidth) => {
+    if (textWidth > containerWidth) {
+      const duration = textWidth * 20; // Adjust speed: 20ms per pixel
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(animValue, {
+            toValue: -textWidth,
+            duration: duration,
+            useNativeDriver: true,
+            delay: 1000, // Pause before starting
+            easing: Easing.linear,
+          }),
+          Animated.timing(animValue, {
+            toValue: containerWidth,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      animValue.setValue(0); // Reset if text fits
+    }
+  }, [containerWidth]);
+
+  // Start or reset marquee animation when item or text width changes
+  useEffect(() => {
+    titleAnim.setValue(0);
+    artistAnim.setValue(0);
+    startMarquee(titleAnim, titleWidth);
+    startMarquee(artistAnim, artistWidth);
+  }, [item, titleWidth, artistWidth, startMarquee, titleAnim, artistAnim]);
+
+  // Existing rotation animation for the disc
   useEffect(() => {
     if (
       (currentSong?.videoId || currentSong?.id) === (item?.videoId || item?.id)
@@ -1001,13 +1244,40 @@ const TrackComponent = ({
       setIsSongLoading(true);
 
       await TrackPlayer.reset();
+<<<<<<< HEAD
 
       const makeTrack = (s) => ({
+=======
+      setPlayingFrom(playingFrom);
+
+      const track = {
+        id: item.videoId || item.id,
+        url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${item.videoId || item.id
+          }&email=${userInfo?.email || ""}`,
+        title: item.title || "Unknown Title",
+        artist: item.author || "Unknown Artist",
+        artwork:
+          item.thumbnail?.url ||
+          item.thumbnail ||
+          item.artwork ||
+          "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
+      };
+      await TrackPlayer.add(track);
+      await TrackPlayer.skip(0);
+      await TrackPlayer.play();
+      setCurrentSong(track);
+
+      console.log("Songs To Be Added In The Queue: ", songs);
+
+      const newQueue = songs.slice(index, songs.length > 10 ? 10 : songs.length);
+      setCurrentQueue(newQueue);
+
+      const tracks = newQueue.map((s) => ({
+>>>>>>> 602a3f2f2f114bdbe6e64b9d4a17c51558214994
         id: s.videoId || s.id,
         url:
           s.uri ||
-          `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
-            s.videoId || s.id
+          `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${s.videoId || s.id
           }&email=${userInfo?.email || ""}`,
         title: s.title || s.filename || "Unknown Title",
         artist: s.author || s.artist || "Unknown Artist",
@@ -1048,7 +1318,7 @@ const TrackComponent = ({
     } catch (error) {
       console.error("Playback error:", error);
       setIsSongLoading(false);
-      ToastAndroid.show("Error playing song", ToastAndroid.SHORT);
+      showToast("Error playing song", 3000);
     }
   };
 
@@ -1063,49 +1333,80 @@ const TrackComponent = ({
       onPress={play}
       style={styles.trackItem}
     >
-      <View style={{ flexDirection: "row", flex: 0.8 }}>
+      <View style={{ flexDirection: 'row', flex: 0.8 }}>
         <Image
           source={{
             uri:
-              (typeof item.thumbnail === "object" && item.thumbnail?.url) ||
+              (typeof item.thumbnail === 'object' && item.thumbnail?.url) ||
               item.thumbnail ||
               item.artwork ||
-              "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
+              'https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png',
           }}
           style={styles.trackImage}
         />
         <View style={styles.trackDetails}>
-          <Text numberOfLines={1} style={styles.trackTitle}>
-            {item.title?.slice(0, 20) ||
-              item.filename?.slice(0, 30) ||
-              "Unknown Title"}
-            ...
-          </Text>
-          <Text numberOfLines={1} style={styles.trackArtist}>
-            {item.author || item.artist || "Unknown"}
-          </Text>
+          <View style={{ overflow: 'hidden', width: (currentSong?.id || currentSong?.videoId) === (item.videoId || item.id) ? containerWidth : '100%' }}>
+            <Animated.View style={{ transform: [{ translateX: (currentSong?.id || currentSong?.videoId) === (item.videoId || item.id) ? titleAnim : 0 }] }}>
+              <Text
+                numberOfLines={1}
+                style={styles.trackTitle}
+                onLayout={handleTitleLayout}
+              >
+                {item.title || item.filename || 'Unknown Title'}
+              </Text>
+            </Animated.View>
+          </View>
+          <View style={{ overflow: 'hidden', width: containerWidth }}>
+            <Animated.View style={{ transform: [{ translateX: (currentSong?.id || currentSong?.videoId) === (item.videoId || item.id) ? artistAnim : 0 }] }}>
+              <Text
+                numberOfLines={1}
+                style={styles.trackArtist}
+                onLayout={handleArtistLayout}
+              >
+                {item.author || item.artist || 'Unknown'}
+              </Text>
+            </Animated.View>
+          </View>
         </View>
       </View>
       {(currentSong?.videoId || currentSong?.id) ===
         (item?.videoId || item?.id) && (
+<<<<<<< HEAD
         <Animated.View style={{ transform: [{ rotate: spin }] }}>
           <FontAwesome5 name="compact-disc" size={24} color={"#ffff"} />
         </Animated.View>
       )}
       {playingFrom !== "Local" && (
+=======
+          <Animated.View style={{ transform: [{ rotate: spin }] }}>
+            <FontAwesome5 name="compact-disc" size={24} color={'#181A3Aff'} />
+          </Animated.View>
+        )}
+      {playingFrom !== 'Local' && (
+>>>>>>> 602a3f2f2f114bdbe6e64b9d4a17c51558214994
         <TouchableOpacity
-          onPress={() => handleLike(userInfo, setFavorites, currentSong)}
+          onPress={() => handleLike(userInfo, setFavorites, item)} // Pass item instead of currentSong
           style={{ marginRight: 10 }}
         >
           {favorites.find(
+<<<<<<< HEAD
             (song) => (song.videoId || song.id) === (item.videoId || item.id),
           ) && <Ionicons name="heart" size={24} color={"#FF4D67"} />}
+=======
+            (song) => (song.videoId || song.id) === (item.videoId || item.id)
+          ) ? (
+            <Ionicons name="heart" size={24} color={'#FF4D67'} />
+          ) : (
+            <Ionicons name="heart-outline" size={24} color={'#fff'} />
+          )}
+>>>>>>> 602a3f2f2f114bdbe6e64b9d4a17c51558214994
         </TouchableOpacity>
       )}
     </TouchableOpacity>
   );
 };
 
+<<<<<<< HEAD
 const COLORS = {
   background: "#121212", // deep charcoal (not neon black)
   surface: "#1E1E1E", // cards / containers
@@ -1118,6 +1419,8 @@ const COLORS = {
   border: "#333333",
 };
 
+=======
+>>>>>>> 602a3f2f2f114bdbe6e64b9d4a17c51558214994
 const styles = StyleSheet.create({
   cardContainer: {
     flexDirection: "column",

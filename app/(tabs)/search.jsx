@@ -22,49 +22,82 @@ const SearchScreen = () => {
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [token, setToken] = useState("");
-  const { songUrl, setSongUrl } = useSong();
-  const { isSongLoading, setIsSongLoading } = useSong();
-  const { currentSong, setCurrentSong } = useSong();
-  const { open, setOpen } = useSong();
+
+  const { songUrl, setSongUrl, isSongLoading, setIsSongLoading, currentSong, setCurrentSong, open, setOpen } = useSong();
   const { setCurrentQueue } = usePlayer();
+  const { userInfo } = useUser();
   const { height } = Dimensions.get("window");
-  const { userInfo, setUserInfo } = useUser();
+
+  const API_KEY = process.env.EXPO_PUBLIC_API_KEY_1;
+  const API_HOST = process.env.EXPO_PUBLIC_API_HOST_1;
 
   const fetchSongs = async () => {
-    if (query.trim() === "") return;
+    if (!query.trim() || !API_KEY || !API_HOST) return;
 
     setLoading(true);
-    const options = {
-      method: "GET",
-      url: "https://youtube-music-api3.p.rapidapi.com/search",
-      params: {
-        q: query,
-        type: "song",
-      },
-      headers: {
-        "x-rapidapi-key": "b1c26628e0msh3fbbf13ea24b4abp184561jsna2ebae86e910",
-        "x-rapidapi-host": "youtube-music-api3.p.rapidapi.com",
-      },
-    };
-
     try {
-      const { data } = await axios.request(options);
+      const { data } = await axios.request({
+        method: "GET",
+        url: "https://youtube-music-api3.p.rapidapi.com/search",
+        params: { q: query, type: "song" },
+        headers: {
+          "x-rapidapi-key": API_KEY,
+          "x-rapidapi-host": API_HOST,
+        },
+      });
+
       if (data?.result) {
-        setSongs(data?.result);
-        setToken(data?.nextPageToken);
+        setSongs(data.result);
+        setToken(data.nextPageToken || "");
       }
     } catch (error) {
-      console.error(error);
+      console.error("Fetch error:", error);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
+
+  const loadMoreSongs = async () => {
+    if (!token || !API_KEY || !API_HOST) return;
+
+    setLoading(true);
+    try {
+      const { data } = await axios.request({
+        method: "GET",
+        url: "https://youtube-music-api3.p.rapidapi.com/search",
+        params: {
+          q: query,
+          type: "song",
+          nextPage: token,
+        },
+        headers: {
+          "x-rapidapi-key": API_KEY,
+          "x-rapidapi-host": API_HOST,
+        },
+      });
+
+      if (data?.result) {
+        setSongs((prev) => [...prev, ...data.result]);
+        setToken(data.nextPageToken || "");
+      }
+    } catch (error) {
+      console.error("Pagination error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const footerItem = () => (
+    <View style={styles.footer}>
+      <ActivityIndicator size="large" color="#fff" />
+    </View>
+  );
 
   return (
     <View
       style={[
         styles.container,
-        { flex: 1, paddingBottom: currentSong ? height * 0.09 : 0 },
+        { paddingBottom: currentSong ? height * 0.09 : 0 },
       ]}
     >
       {/* Search Bar */}
@@ -82,32 +115,30 @@ const SearchScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Songs List */}
-      {loading ? (
-        <ActivityIndicator
-          size="large"
-          color="white"
-          style={{ marginTop: 20 }}
-        />
-      ) : songs?.length > 0 ? (
+      {/* Song List */}
+      {loading && songs.length === 0 ? (
+        <ActivityIndicator size="large" color="white" style={{ marginTop: 20 }} />
+      ) : songs.length > 0 ? (
         <FlatList
           data={songs}
-          keyExtractor={(item) => item?.videoId.toString()}
+          keyExtractor={(item, index) => item?.videoId || index.toString()}
           renderItem={({ item, index }) => (
             <TrackComponent
               item={item}
               songs={songs}
+              index={index}
               setCurrentQueue={setCurrentQueue}
               setCurrentSong={setCurrentSong}
               setIsSongLoading={setIsSongLoading}
               setSongUrl={setSongUrl}
-              index={index}
               userInfo={userInfo}
-              playingFrom={"Search"}
+              playingFrom="Search"
             />
           )}
           showsVerticalScrollIndicator={false}
-          alwaysBounceVertical
+          onEndReached={loadMoreSongs}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={token ? footerItem : null}
         />
       ) : (
         <Text style={styles.noResults}>No songs found.</Text>
@@ -116,7 +147,6 @@ const SearchScreen = () => {
   );
 };
 
-// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -140,35 +170,17 @@ const styles = StyleSheet.create({
   searchButton: {
     padding: 5,
   },
-  songItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#457B9D",
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 5,
-  },
-  songImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
-  },
-  songDetails: {
-    marginLeft: 15,
-  },
-  songTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "white",
-  },
-  songArtist: {
-    fontSize: 14,
-    color: "#AAA",
-  },
   noResults: {
     textAlign: "center",
     color: "#888",
     marginTop: 20,
+  },
+  footer: {
+    width: "100%",
+    height: 60,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

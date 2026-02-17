@@ -7,9 +7,10 @@ import {
   Image,
   StyleSheet,
   ActivityIndicator,
-  ToastAndroid,
   Dimensions,
+  Platform,
 } from "react-native";
+import { showToast } from "@/constants/utils";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import TrackPlayer, {
   State,
@@ -51,9 +52,8 @@ const UserPlaylistScreen = () => {
       await TrackPlayer.reset();
       const tracks = newQueue.map((s) => ({
         id: s.videoId || s.id,
-        url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
-          s.videoId || s.id
-        }&email=${userInfo?.email || ""}`,
+        url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${s.videoId || s.id
+          }&email=${userInfo?.email || ""}`,
         title: s.title || "Unknown Title",
         artist: s.author || "Unknown Artist",
         artwork:
@@ -70,7 +70,10 @@ const UserPlaylistScreen = () => {
     } catch (error) {
       console.error("Error setting queue and playing song:", error);
       setIsSongLoading(false);
-      ToastAndroid.show("Error playing song", ToastAndroid.SHORT);
+      if (Platform.OS === "android") {
+
+        showToast("Error playing song", 3000);
+      }
     }
   };
 
@@ -78,9 +81,8 @@ const UserPlaylistScreen = () => {
     await TrackPlayer.reset();
     const tracks = playlist?.songs?.map((song) => ({
       id: song?.videoId || song?.id,
-      url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
-        song.videoId || song.id
-      }&email=${userInfo?.email || ""}`,
+      url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${song.videoId || song.id
+        }&email=${userInfo?.email || ""}`,
       title: song.title,
       artist: song.author || "Unknown Author",
       artwork: song.thumbnail?.url || song.thumbnail || song.artwork,
@@ -103,9 +105,9 @@ const UserPlaylistScreen = () => {
           JSON.stringify(updatedPlaylists)
         );
         setPlaylist(updatedPlaylists.find((p) => p._id === id));
-        ToastAndroid.show(
+        showToast(
           `Playlist is now ${playlist.type}`,
-          ToastAndroid.SHORT
+          3000
         );
       }
     } catch (error) {
@@ -216,7 +218,7 @@ const UserPlaylistScreen = () => {
             </View>
             {(playbackState.state === State.Loading ||
               playbackState.state === State.Buffering) &&
-            currentSong.videoId === item.videoId ? (
+              currentSong.videoId === item.videoId ? (
               <ActivityIndicator size="small" color="white" />
             ) : (
               <TouchableOpacity
@@ -231,7 +233,7 @@ const UserPlaylistScreen = () => {
                 <Ionicons
                   name={
                     currentSong?.videoId === item.videoId &&
-                    playbackState.state === State.Playing
+                      playbackState.state === State.Playing
                       ? "pause"
                       : "play"
                   }
