@@ -3,14 +3,8 @@ import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system";
 import { playASongs } from "./player";
 import { handleLiked } from "./liked";
-<<<<<<< HEAD
-import { Alert, ToastAndroid } from "react-native";
-import { NativeModules } from 'react-native';
-
-=======
 import { NativeModules } from "react-native";
 import { showToast } from "./utils";
->>>>>>> 602a3f2f2f114bdbe6e64b9d4a17c51558214994
 
 export const saveToRecentlyPlayed = async (song) => {
   console.log(song);

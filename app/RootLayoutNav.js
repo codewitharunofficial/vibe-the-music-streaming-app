@@ -14,6 +14,7 @@ import { useColorScheme } from "@/components/useColorScheme";
 import {
   ThemeProvider,
   DarkTheme,
+  DefaultTheme,
 } from "@react-navigation/native";
 import TrackPlayer, { Capability, RepeatMode, AppKilledPlaybackBehavior } from "react-native-track-player";
 import { trackPlayerService } from "@/trackPlayerService";
@@ -168,8 +169,8 @@ export default function RootLayoutNav() {
 
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
-      <ThemeProvider value={DarkTheme}>
+    <SafeAreaView style={{ flex: 1 }}>
+      <ThemeProvider value={DefaultTheme}>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="recents" options={{ headerShown: false }} />

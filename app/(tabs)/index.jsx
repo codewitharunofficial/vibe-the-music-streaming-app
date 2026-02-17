@@ -3,8 +3,8 @@ import {
   Alert,
   Dimensions,
   StyleSheet,
+  ToastAndroid,
 } from "react-native";
-import { showToast } from "@/constants/utils";
 import { View } from "@/components/Themed";
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -161,7 +161,7 @@ export default function Home() {
         // setSongUrl(track.url);
         setCurrentSong(track);
 
-        showToast("Song Is Added To The Queue", 3000);
+        ToastAndroid.show("Song Is Added To The Queue", ToastAndroid.SHORT);
         setIsPlaying(true);
 
         const newQueue = home?.quick_picks.slice(
@@ -194,7 +194,7 @@ export default function Home() {
       } catch (error) {
         console.error("Error setting queue and playing song:", error);
         setIsSongLoading(false);
-        showToast("Error playing song", 3000);
+        ToastAndroid.show("Error playing song", ToastAndroid.SHORT);
       }
     } else if (section === "playlist") {
       console.log("Getting Playlist...>", song.browseId);

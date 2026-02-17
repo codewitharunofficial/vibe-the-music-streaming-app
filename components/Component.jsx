@@ -55,6 +55,7 @@ import {
 import { handleLiked, handleRecentlyPlayed } from "@/constants/apiCalls";
 import axios from "axios";
 import Colors from "@/constants/Colors";
+import { COLORS } from "@/utils/colors";
 
 const { width, height } = Dimensions.get("window");
 
@@ -573,13 +574,8 @@ const NowPlayingScreen = React.memo(
         Event.PlaybackError,
         (error) => {
           console.error("Playback error:", error);
-<<<<<<< HEAD
-          ToastAndroid.show("Error playing song", ToastAndroid.SHORT);
-        },
-=======
           showToast("Error playing song", 3000);
         }
->>>>>>> 602a3f2f2f114bdbe6e64b9d4a17c51558214994
       );
 
       return () => {
@@ -833,13 +829,8 @@ const NowPlayingScreen = React.memo(
                       </Text>
                     </View>
                   ) : downloaded.find(
-<<<<<<< HEAD
-                      (s) => s.id === (currentSong.id || currentSong.videoId),
-                    ) ? (
-=======
                     (s) => s.id === (currentSong.id || currentSong.videoId)
                   ) ? (
->>>>>>> 602a3f2f2f114bdbe6e64b9d4a17c51558214994
                     <FontAwesome
                       name="check-circle"
                       size={25}
@@ -1244,10 +1235,6 @@ const TrackComponent = ({
       setIsSongLoading(true);
 
       await TrackPlayer.reset();
-<<<<<<< HEAD
-
-      const makeTrack = (s) => ({
-=======
       setPlayingFrom(playingFrom);
 
       const track = {
@@ -1273,7 +1260,6 @@ const TrackComponent = ({
       setCurrentQueue(newQueue);
 
       const tracks = newQueue.map((s) => ({
->>>>>>> 602a3f2f2f114bdbe6e64b9d4a17c51558214994
         id: s.videoId || s.id,
         url:
           s.uri ||
@@ -1294,11 +1280,7 @@ const TrackComponent = ({
           Accept: "*/*",
           Range: "bytes=0-",
         },
-      });
-
-      // Build queue FIRST
-      const newQueue = songs.slice(index);
-      const tracks = newQueue.map(makeTrack);
+      }));
 
       await TrackPlayer.setQueue(tracks);
 
@@ -1371,61 +1353,33 @@ const TrackComponent = ({
       </View>
       {(currentSong?.videoId || currentSong?.id) ===
         (item?.videoId || item?.id) && (
-<<<<<<< HEAD
-        <Animated.View style={{ transform: [{ rotate: spin }] }}>
-          <FontAwesome5 name="compact-disc" size={24} color={"#ffff"} />
-        </Animated.View>
-      )}
-      {playingFrom !== "Local" && (
-=======
           <Animated.View style={{ transform: [{ rotate: spin }] }}>
-            <FontAwesome5 name="compact-disc" size={24} color={'#181A3Aff'} />
+            <FontAwesome5 name="compact-disc" size={24} color={'#ffff'} />
           </Animated.View>
         )}
       {playingFrom !== 'Local' && (
->>>>>>> 602a3f2f2f114bdbe6e64b9d4a17c51558214994
         <TouchableOpacity
           onPress={() => handleLike(userInfo, setFavorites, item)} // Pass item instead of currentSong
           style={{ marginRight: 10 }}
         >
           {favorites.find(
-<<<<<<< HEAD
-            (song) => (song.videoId || song.id) === (item.videoId || item.id),
-          ) && <Ionicons name="heart" size={24} color={"#FF4D67"} />}
-=======
             (song) => (song.videoId || song.id) === (item.videoId || item.id)
           ) ? (
             <Ionicons name="heart" size={24} color={'#FF4D67'} />
           ) : (
             <Ionicons name="heart-outline" size={24} color={'#fff'} />
           )}
->>>>>>> 602a3f2f2f114bdbe6e64b9d4a17c51558214994
         </TouchableOpacity>
       )}
     </TouchableOpacity>
   );
 };
 
-<<<<<<< HEAD
-const COLORS = {
-  background: "#121212", // deep charcoal (not neon black)
-  surface: "#1E1E1E", // cards / containers
-  surfaceAlt: "#2A2A2A",
-  primary: "#1DB954", // soft Spotify green
-  secondary: "#4F7CAC", // muted blue
-  textPrimary: "#FFFFFF",
-  textSecondary: "#CFCFCF",
-  textMuted: "#9A9A9A",
-  border: "#333333",
-};
-
-=======
->>>>>>> 602a3f2f2f114bdbe6e64b9d4a17c51558214994
 const styles = StyleSheet.create({
   cardContainer: {
     flexDirection: "column",
     alignItems: "center",
-    gap: sp(6),
+    gap: sp(4),
     width: wp(150),
     height: hp(240),
     marginHorizontal: sp(2),

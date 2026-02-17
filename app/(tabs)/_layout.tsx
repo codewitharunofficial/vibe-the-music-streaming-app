@@ -8,13 +8,15 @@ import { useColorScheme } from "@/components/useColorScheme";
 import { FontAwesome6, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useUser } from "@/context/User";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { COLORS } from "@/utils/colors";
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>["name"];
   color: string;
+  size: number;
 }) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
+  return <FontAwesome style={{ marginBottom: -3 }} {...props} />;
 }
 
 export default function TabLayout() {
@@ -26,14 +28,16 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
         tabBarStyle: { flex: 0.1, alignItems: "center" },
-        tabBarItemStyle: { padding: 15, backgroundColor: "#1A1A2E" },
+        tabBarItemStyle: { padding: 15, backgroundColor: COLORS.surface },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="home" color={color} size={focused ? 32 : 28} />
+          ),
           headerLeft: () => (
             <Link href="/(tabs)" asChild>
               <Pressable>
@@ -53,7 +57,7 @@ export default function TabLayout() {
             </Link>
           ),
           headerTitle: "Vibe",
-          headerStyle: { backgroundColor: "#1A1A2E" },
+          headerStyle: { backgroundColor: COLORS.surfaceAlt },
           headerTitleStyle: { color: "#fff" },
           headerRight: () => {
             return (
@@ -89,7 +93,7 @@ export default function TabLayout() {
             <Ionicons name="search" color={color} size={size} />
           ),
           headerTitle: "Search - Vibe",
-          headerStyle: { backgroundColor: "#1A1A2E" },
+          headerStyle: { backgroundColor: COLORS.surfaceAlt },
           headerTitleStyle: { color: "#fff" },
           // tabBarStyle: { backgroundColor: "#1A1A2E", flex: 0.1 },
           tabBarHideOnKeyboard: true,
@@ -102,7 +106,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" color={color} size={size} />
           ),
-          headerStyle: { backgroundColor: "#1A1A2E" },
+          headerStyle: { backgroundColor: COLORS.surfaceAlt },
           headerTitleStyle: { color: "#fff" },
           // tabBarStyle: { backgroundColor: "#1A1A2E", flex: 0.1 },
           tabBarHideOnKeyboard: true,

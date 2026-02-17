@@ -22,6 +22,7 @@ import { mergeRecents, saveToFavourites } from "@/constants/cachedData";
 import { useSong } from "@/context/SongContext";
 import Loader from "@/components/Loader";
 import { reloadHome } from "@/constants/apiCalls";
+import { COLORS } from "@/utils/colors";
 
 // Complete any pending browser session
 WebBrowser.maybeCompleteAuthSession();
@@ -264,7 +265,7 @@ const UserProfile = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#2F1C6A",
+    backgroundColor: COLORS.background,
     alignItems: "center",
     justifyContent: "center",
   },
