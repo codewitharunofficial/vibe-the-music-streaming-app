@@ -9,7 +9,8 @@ export const playASongs = async (id, email, song) => {
       `${process.env.EXPO_PUBLIC_API}/api/song`, { id: id }
     );
     if (data) {
-      console.log(data);
+      console.log(data.song.adaptiveFormats[data.song.adaptiveFormats?.length - 1]
+        ?.url);
       return data.song.adaptiveFormats[data.song.adaptiveFormats?.length - 1]
         ?.url;
     }

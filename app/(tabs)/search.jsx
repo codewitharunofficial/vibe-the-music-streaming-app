@@ -15,6 +15,7 @@ import { useSong } from "@/context/SongContext";
 import { usePlayer } from "@/context/PlayerContext";
 import { useUser } from "@/context/User";
 import { TrackComponent } from "@/components/Component";
+import {COLORS} from "@/utils/colors";
 
 const SearchScreen = () => {
   const [query, setQuery] = useState("");
@@ -71,7 +72,7 @@ const SearchScreen = () => {
         <TextInput
           style={styles.input}
           placeholder="Search songs..."
-          placeholderTextColor="#AAA"
+          placeholderTextColor="#ffff"
           value={query}
           onChangeText={setQuery}
           onSubmitEditing={fetchSongs}
@@ -119,7 +120,7 @@ const SearchScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#2F1C6A",
+    backgroundColor: COLORS.background,
     padding: 20,
   },
   searchBar: {
@@ -134,7 +135,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: "white",
+    color: COLORS.textPrimary,
   },
   searchButton: {
     padding: 5,

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { sp, wp, hp, fs } from "@/utils/responsive";
 import {
   View,
   Text,
@@ -53,7 +54,7 @@ import {
 } from "@/constants/cachedData";
 import { handleLiked, handleRecentlyPlayed } from "@/constants/apiCalls";
 import axios from "axios";
-// import { Audio } from "expo-av";
+import Colors from "@/constants/Colors";
 
 const { width, height } = Dimensions.get("window");
 
@@ -176,8 +177,8 @@ const MusicSections = ({ data, onPlayPress, onLikePress }) => {
               index !== 1
                 ? key
                 : index === 1 && key.includes("album")
-                ? "album"
-                : "playlist"
+                  ? "album"
+                  : "playlist"
             }
           />
         ) : null;
@@ -239,12 +240,12 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
           id: song.videoId,
           song: song,
           email: userInfo?.email,
-        }
+        },
       );
 
       if (data) {
         console.log(
-          data.song.adaptiveFormats[data.song.adaptiveFormats.length - 1]?.url
+          data.song.adaptiveFormats[data.song.adaptiveFormats.length - 1]?.url,
         );
         const newTrack = {
           id: song.videoId,
@@ -392,7 +393,7 @@ const NowPlayingScreen = React.memo(
         if (!activeTrack) return;
 
         const newSongIndex = currentQueue.findIndex(
-          (s) => (s.videoId || s.id) === activeTrack.id
+          (s) => (s.videoId || s.id) === activeTrack.id,
         );
 
         console.log("New song Index: ", newSongIndex);
@@ -421,7 +422,7 @@ const NowPlayingScreen = React.memo(
         () => {
           console.log("Track changed, updating UI...");
           handleTrackChange();
-        }
+        },
       );
 
       const queueEndListener = TrackPlayer.addEventListener(
@@ -433,7 +434,7 @@ const NowPlayingScreen = React.memo(
           setCurrentSong(null);
           setCurrentIndex(0);
           updateService();
-        }
+        },
       );
 
       const errorListener = TrackPlayer.addEventListener(
@@ -441,7 +442,7 @@ const NowPlayingScreen = React.memo(
         (error) => {
           console.error("Playback error:", error);
           ToastAndroid.show("Error playing song", ToastAndroid.SHORT);
-        }
+        },
       );
 
       return () => {
@@ -458,7 +459,7 @@ const NowPlayingScreen = React.memo(
       } else {
         console.error(
           "updateServiceData is not a function:",
-          updateServiceData
+          updateServiceData,
         );
       }
     }, [currentQueue, userInfo, currentIndex]);
@@ -540,7 +541,7 @@ const NowPlayingScreen = React.memo(
       try {
         const newRepeat = !repeat;
         await TrackPlayer.setRepeatMode(
-          newRepeat ? RepeatMode.Track : RepeatMode.Off
+          newRepeat ? RepeatMode.Track : RepeatMode.Off,
         );
         setRepeat(newRepeat);
       } catch (error) {
@@ -658,7 +659,7 @@ const NowPlayingScreen = React.memo(
                     await downloadAndSaveSong(
                       currentSong,
                       setDownloadProgess,
-                      setCurrentDownload
+                      setCurrentDownload,
                     );
                     ToastAndroid.show("Song Downloaded", ToastAndroid.SHORT);
                     setIsDownloading(false);
@@ -682,7 +683,7 @@ const NowPlayingScreen = React.memo(
                       </Text>
                     </View>
                   ) : downloaded.find(
-                      (s) => s.id === (currentSong.id || currentSong.videoId)
+                      (s) => s.id === (currentSong.id || currentSong.videoId),
                     ) ? (
                     <FontAwesome
                       name="check-circle"
@@ -703,7 +704,7 @@ const NowPlayingScreen = React.memo(
                   {favorites.find(
                     (item) =>
                       (item.videoId || item?.id) ===
-                      (currentSong?.videoId || currentSong.id)
+                      (currentSong?.videoId || currentSong.id),
                   ) ? (
                     <Ionicons name="heart" size={24} color="#FF4D67" />
                   ) : (
@@ -733,12 +734,16 @@ const NowPlayingScreen = React.memo(
           <View style={styles.nowPlayingControls}>
             <TouchableOpacity onPress={toggleRepeat}>
               {repeat ? (
-                <MaterialIcons name="repeat-one" size={32} color="#00ffcc" />
+                <MaterialIcons
+                  name="repeat-one"
+                  size={32}
+                  color={COLORS.textPrimary}
+                />
               ) : (
                 <MaterialCommunityIcons
                   name="repeat"
                   size={32}
-                  color="#00F5D4"
+                  color={COLORS.textPrimary}
                 />
               )}
             </TouchableOpacity>
@@ -746,7 +751,7 @@ const NowPlayingScreen = React.memo(
               <Ionicons
                 name="play-back"
                 size={32}
-                color={currentIndex <= 0 ? "#666" : "#00F5D4"}
+                color={currentIndex <= 0 ? "#666" : COLORS.textPrimary}
               />
             </TouchableOpacity>
             {isSongLoading || playbackState.state === State.Buffering ? (
@@ -758,7 +763,7 @@ const NowPlayingScreen = React.memo(
                     playbackState.state === State.Playing ? "pause" : "play"
                   }
                   size={32}
-                  color="#00F5D4"
+                  color={COLORS.textPrimary}
                 />
               </TouchableOpacity>
             )}
@@ -770,12 +775,18 @@ const NowPlayingScreen = React.memo(
                 name="play-forward"
                 size={32}
                 color={
-                  currentIndex + 1 >= currentQueue.length ? "#666" : "#00F5D4"
+                  currentIndex + 1 >= currentQueue.length
+                    ? "#666"
+                    : COLORS.textPrimary
                 }
               />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowQueue(true)}>
-              <MaterialCommunityIcons name="menu" size={32} color="#00F5D4" />
+              <MaterialCommunityIcons
+                name="menu"
+                size={32}
+                color={COLORS.textPrimary}
+              />
             </TouchableOpacity>
           </View>
         </ImageBackground>
@@ -787,7 +798,7 @@ const NowPlayingScreen = React.memo(
         />
       </BottomModal>
     );
-  }
+  },
 );
 
 // export default NowPlayingScreen;
@@ -878,7 +889,12 @@ const MiniPlayer = ({
         </Text>
       </View>
       <View
-        style={{ flexDirection: "row", gap: 10, marginLeft: 10, flex: 0.2 }}
+        style={{
+          flexDirection: "row",
+          gap: wp(10),
+          marginLeft: wp(10),
+          flex: wp(0.3),
+        }}
       >
         <TouchableOpacity
           style={styles.miniPlayerIcon}
@@ -889,7 +905,7 @@ const MiniPlayer = ({
           {favorites.find(
             (item) =>
               (item.videoId || item.id) ===
-              (currentSong.videoId || currentSong.id)
+              (currentSong.videoId || currentSong.id),
           ) ? (
             <Ionicons name="heart" size={24} color={"#FF4D67"} />
           ) : (
@@ -940,7 +956,7 @@ const TrackComponent = ({
           duration: 3000,
           easing: Easing.linear,
           useNativeDriver: true,
-        })
+        }),
       ).start();
     } else {
       rotateAnim.setValue(0);
@@ -956,11 +972,11 @@ const TrackComponent = ({
     try {
       const fav = JSON.parse(await AsyncStorage.getItem("favourites")) || [];
       const song = fav.find(
-        (e) => (e.videoId || e.id) === (item.videoId || item.id)
+        (e) => (e.videoId || e.id) === (item.videoId || item.id),
       );
       if (song) {
         const indexToremove = fav.findIndex(
-          (e) => (e.videoId || e.id) === (item.videoId || item.id)
+          (e) => (e.videoId || e.id) === (item.videoId || item.id),
         );
         fav.splice(indexToremove, 1);
         setFavorites(fav);
@@ -982,35 +998,11 @@ const TrackComponent = ({
 
   const play = async () => {
     try {
+      setIsSongLoading(true);
+
       await TrackPlayer.reset();
-      // setCurrentSong(item);
-      setPlayingFrom(playingFrom);
 
-      const track = {
-        id: item.videoId || item.id,
-        url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
-          item.videoId || item.id
-        }&email=${userInfo?.email || ""}`,
-        title: item.title || "Unknown Title",
-        artist: item.author || "Unknown Artist",
-        artwork:
-          item.thumbnail?.url ||
-          item.thumbnail ||
-          item.artwork ||
-          "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
-      };
-      await TrackPlayer.add(track);
-      await TrackPlayer.skip(0);
-      await TrackPlayer.play();
-      // setSongUrl(track.url);
-      setCurrentSong(track);
-
-      console.log("Songs To Be Added In The Queue: ", songs);
-
-      const newQueue = songs.slice(index, songs.length);
-      setCurrentQueue(newQueue);
-
-      const tracks = newQueue.map((s) => ({
+      const makeTrack = (s) => ({
         id: s.videoId || s.id,
         url:
           s.uri ||
@@ -1024,18 +1016,37 @@ const TrackComponent = ({
           s.thumbnail ||
           s.artwork ||
           "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
-      }));
+
+        // 🔥 ANDROID-CRITICAL
+        type: "audio/mp4",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Linux; Android 13)",
+          Accept: "*/*",
+          Range: "bytes=0-",
+        },
+      });
+
+      // Build queue FIRST
+      const newQueue = songs.slice(index);
+      const tracks = newQueue.map(makeTrack);
 
       await TrackPlayer.setQueue(tracks);
+
+      await TrackPlayer.skip(0);
+      await TrackPlayer.play();
+
+      setCurrentSong(tracks[0]);
+      setCurrentQueue(newQueue);
       setIsPlaying(true);
       setIsSongLoading(false);
+
       await saveToRecentlyPlayed(item);
 
       if (userInfo?.email) {
         await handleRecentlyPlayed(userInfo.email, item);
       }
     } catch (error) {
-      console.error("Error setting queue and playing song:", error);
+      console.error("Playback error:", error);
       setIsSongLoading(false);
       ToastAndroid.show("Error playing song", ToastAndroid.SHORT);
     }
@@ -1078,7 +1089,7 @@ const TrackComponent = ({
       {(currentSong?.videoId || currentSong?.id) ===
         (item?.videoId || item?.id) && (
         <Animated.View style={{ transform: [{ rotate: spin }] }}>
-          <FontAwesome5 name="compact-disc" size={24} color={"#181A3Aff"} />
+          <FontAwesome5 name="compact-disc" size={24} color={"#ffff"} />
         </Animated.View>
       )}
       {playingFrom !== "Local" && (
@@ -1087,7 +1098,7 @@ const TrackComponent = ({
           style={{ marginRight: 10 }}
         >
           {favorites.find(
-            (song) => (song.videoId || song.id) === (item.videoId || item.id)
+            (song) => (song.videoId || song.id) === (item.videoId || item.id),
           ) && <Ionicons name="heart" size={24} color={"#FF4D67"} />}
         </TouchableOpacity>
       )}
@@ -1095,241 +1106,280 @@ const TrackComponent = ({
   );
 };
 
-// export default TrackComponent;
+const COLORS = {
+  background: "#121212", // deep charcoal (not neon black)
+  surface: "#1E1E1E", // cards / containers
+  surfaceAlt: "#2A2A2A",
+  primary: "#1DB954", // soft Spotify green
+  secondary: "#4F7CAC", // muted blue
+  textPrimary: "#FFFFFF",
+  textSecondary: "#CFCFCF",
+  textMuted: "#9A9A9A",
+  border: "#333333",
+};
 
 const styles = StyleSheet.create({
   cardContainer: {
     flexDirection: "column",
-    gap: 10,
     alignItems: "center",
-    width: 150,
-    height: 250,
-    marginHorizontal: 10,
+    gap: sp(6),
+    width: wp(150),
+    height: hp(240),
+    marginHorizontal: sp(2),
   },
+
   image: {
-    width: 150,
-    height: 150,
-    borderRadius: 10,
+    width: wp(150),
+    aspectRatio: 1,
+    borderRadius: sp(12),
+    backgroundColor: COLORS.surfaceAlt,
   },
+
   title: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "white",
+    fontSize: fs(14),
+    fontWeight: "600",
+    color: COLORS.textPrimary,
     textAlign: "center",
-    // marginTop: 5,
   },
+
   artist: {
-    fontSize: 12,
-    color: "gray",
+    fontSize: fs(12),
+    color: COLORS.textSecondary,
     textAlign: "center",
   },
+
   iconContainer: {
     flexDirection: "row",
-    marginTop: 5,
+    marginTop: hp(4),
   },
+
   iconButton: {
-    marginHorizontal: 5,
+    marginHorizontal: sp(6),
   },
+
   listContainer: {
-    marginVertical: 10,
-    padding: 10,
-    borderRadius: 10,
-    backgroundColor: "#FF4C98",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
+    marginVertical: hp(3),
+    padding: sp(5),
+    borderRadius: sp(14),
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
+
   listTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "white",
-    marginBottom: 10,
+    fontSize: fs(18),
+    fontWeight: "700",
+    color: COLORS.textPrimary,
+    marginBottom: hp(12),
   },
+
   container: {
-    paddingVertical: 10,
+    height: hp(200),
+    paddingVertical: hp(3),
   },
+
   quickAccessButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#2c2c2e",
-    padding: width * 0.04,
-    borderRadius: 8,
-    marginVertical: width * 0.02,
-    minWidth: width * 0.45,
+    backgroundColor: COLORS.surfaceAlt,
+    padding: sp(14),
+    borderRadius: sp(10),
+    marginVertical: hp(8),
+    minWidth: wp(160),
     alignSelf: "center",
   },
+
   quickAccessText: {
-    color: "white",
-    fontSize: width * 0.04,
-    marginLeft: width * 0.03,
+    color: COLORS.textPrimary,
+    fontSize: fs(14),
+    marginLeft: sp(10),
   },
+
   sectionContainer: {
-    padding: width * 0.04,
+    padding: sp(5),
   },
+
   sectionTitle: {
-    color: "white",
-    fontSize: width * 0.05,
-    fontWeight: "bold",
-    marginBottom: width * 0.02,
+    color: COLORS.textPrimary,
+    fontSize: fs(16),
+    fontWeight: "700",
+    margin: hp(4),
   },
+
   fullScreenContainer: {
-    width: width,
-    height: height * 0.93,
-    backgroundColor: "#2F1C6A",
-    padding: 20,
+    width: "100%",
+    height: "100%",
+    backgroundColor: COLORS.background,
+    padding: sp(15),
+    alignItems: "center",
   },
+
   shareButton: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 15,
+    marginBottom: hp(12),
   },
+
   shareText: {
-    color: "#fff",
-    marginLeft: 5,
-    fontSize: 16,
+    color: COLORS.textPrimary,
+    marginLeft: sp(6),
+    fontSize: fs(14),
   },
+
   header: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "bold",
+    color: COLORS.textPrimary,
+    fontSize: fs(22),
+    fontWeight: "800",
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: hp(18),
   },
+
   nowPlayingImage: {
-    width: "100%",
-    height: 300,
-    borderRadius: 10,
-    marginBottom: 20,
-    objectFit: "fill",
+    width: "80%",
+    aspectRatio: 1,
+    borderRadius: sp(16),
+    marginBottom: hp(20),
+    alignSelf: "center",
   },
+
   nowPlayingTitle: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "600",
+    color: COLORS.textPrimary,
+    fontSize: fs(20),
+    fontWeight: "700",
     textAlign: "center",
-    marginBottom: 5,
+    marginBottom: hp(4),
   },
+
   nowPlayingArtist: {
-    color: "#ccc",
-    fontSize: 16,
+    color: COLORS.textSecondary,
+    fontSize: fs(15),
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: hp(20),
   },
+
   sliderContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 20,
+    marginVertical: hp(16),
   },
+
   slider: {
     flex: 1,
-    height: 40,
+    height: hp(40),
   },
+
   timeText: {
-    color: "#fff",
-    fontSize: 12,
-    width: 40,
+    color: COLORS.textMuted,
+    fontSize: fs(12),
+    width: wp(42),
     textAlign: "center",
   },
+
   nowPlayingControls: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: sp(18),
   },
+
   miniPlayerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#3A86FF",
-    padding: 10,
-    borderRadius: 10,
+    backgroundColor: COLORS.surface,
+    padding: sp(12),
+    borderRadius: sp(14),
     position: "absolute",
-    bottom: height * 0.098,
-    left: 10,
-    right: 10,
-    gap: 5,
+    left: sp(10),
+    right: sp(10),
+    bottom: hp(80),
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
+
   miniPlayerImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
+    width: wp(48),
+    aspectRatio: 1,
+    borderRadius: sp(10),
   },
+
   miniPlayerInfo: {
-    flex: 0.75,
-    marginLeft: 10,
+    flex: 1,
+    marginLeft: sp(10),
   },
+
   miniPlayerTitle: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
+    color: COLORS.textPrimary,
+    fontSize: fs(15),
+    fontWeight: "600",
   },
+
   miniPlayerArtist: {
-    color: "#BFC0C0",
-    fontSize: 14,
+    color: COLORS.textSecondary,
+    fontSize: fs(13),
   },
+
   miniPlayerIcon: {
-    margin: "auto",
+    marginLeft: sp(6),
   },
+
   modalContainer: {
-    height: height * 0.5,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    borderTopLeftRadius: 5,
-    borderTopRightRadius: 5,
+    height: hp(420),
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: sp(16),
+    borderTopRightRadius: sp(16),
   },
+
   queueHeader: {
     borderBottomWidth: 1,
-    borderBottomColor: "#555",
-    paddingBottom: 10,
+    borderBottomColor: COLORS.border,
+    paddingBottom: hp(10),
   },
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
-  },
+
   songItem: {
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#444",
+    paddingVertical: hp(10),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 10,
+    gap: sp(10),
+    paddingHorizontal: sp(10),
   },
+
   songTitle: {
-    fontSize: 16,
-    color: "#fff",
+    fontSize: fs(15),
+    color: COLORS.textPrimary,
   },
-  artist: {
-    fontSize: 14,
-    color: "#aaa",
-  },
+
   trackItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#457B9D",
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 5,
+    backgroundColor: COLORS.surfaceAlt,
+    padding: sp(12),
+    borderRadius: sp(12),
+    marginBottom: hp(6),
     justifyContent: "space-between",
   },
+
   trackImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
+    width: wp(50),
+    aspectRatio: 1,
+    borderRadius: sp(8),
   },
+
   trackTitle: {
-    width: "100%",
-    fontSize: 16,
-    color: "#fff",
+    fontSize: fs(15),
+    color: COLORS.textPrimary,
+    fontWeight: "500",
   },
+
   trackArtist: {
-    fontSize: 14,
-    color: "#bbb",
+    fontSize: fs(13),
+    color: COLORS.textSecondary,
   },
+
   trackDetails: {
-    marginLeft: 15,
-    maxWidth: "60%",
+    marginLeft: sp(12),
+    maxWidth: "65%",
   },
 });
 
