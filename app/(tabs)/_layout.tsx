@@ -28,7 +28,7 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
         tabBarStyle: { flex: 0.1, alignItems: "center" },
-        tabBarItemStyle: { padding: 15, backgroundColor: COLORS.surface },
+        tabBarItemStyle: { padding: 15, backgroundColor: "#054465" },
       }}
     >
       <Tabs.Screen
@@ -36,7 +36,7 @@ export default function TabLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="home" color={color} size={focused ? 32 : 28} />
+            <TabBarIcon name="home" color={color} size={focused ? 32 : 24} />
           ),
           headerLeft: () => (
             <Link href="/(tabs)" asChild>
@@ -89,8 +89,8 @@ export default function TabLayout() {
         name="search"
         options={{
           title: "Search",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search" color={color} size={size} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name="search" color={color} size={focused ? 32 : 24} />
           ),
           headerTitle: "Search - Vibe",
           headerStyle: { backgroundColor: COLORS.surfaceAlt },
@@ -103,8 +103,8 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" color={color} size={size} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name="person" color={color} size={focused ? 32 : 24} />
           ),
           headerStyle: { backgroundColor: COLORS.surfaceAlt },
           headerTitleStyle: { color: "#fff" },

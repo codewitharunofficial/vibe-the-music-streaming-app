@@ -2,6 +2,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  ImageBackground,
   StyleSheet,
   ToastAndroid,
 } from "react-native";
@@ -58,6 +59,9 @@ export default function Home() {
   const { setIsPlaying, setCurrentQueue, setPlayingFrom } = usePlayer();
   const { setPlaylist, setAlbum } = usePlaylist();
   const { userInfo } = useUser();
+  const [background, setBackground] = useState(
+    "../../../assets/images/icon.png",
+  );
 
   const [isPlaylistLoading, setIsPlaylistLoading] = useState(false);
   const [albumLoading, setIsAlbumLoading] = useState(false);
@@ -236,36 +240,42 @@ export default function Home() {
     <View
       style={[styles.container, { paddingBottom: currentSong ? hp(90) : 0 }]}
     >
-      {/* Quick Access */}
-      <View style={styles.quickAccessContainer}>
-        <QuickAccessButton
-          title="Recently Played"
-          iconName="speaker"
-          onPress={routeToRecents}
-        />
-        <QuickAccessButton
-          title="Local Songs"
-          iconName="folder"
-          onPress={() => router.push("/local")}
-        />
-      </View>
+      <ImageBackground
+        source={ require("@/assets/images/background.jpg")}
+        blurRadius={10}
+        style={{flex: 1}}
+      >
+        {/* Quick Access */}
+        <View style={styles.quickAccessContainer}>
+          <QuickAccessButton
+            title="Recently Played"
+            iconName="speaker"
+            onPress={routeToRecents}
+          />
+          <QuickAccessButton
+            title="Local Songs"
+            iconName="folder"
+            onPress={() => router.push("/local")}
+          />
+        </View>
 
-      {/* Sections */}
-      {home && !isLoading ? (
-        <MusicSections
-          data={home}
-          onPlayPress={handlePress}
-          onLikePress={handleLike}
-        />
-      ) : (
-        <ActivityIndicator
-          size="large"
-          color={COLORS.primary}
-          style={{ marginTop: hp(40) }}
-        />
-      )}
+        {/* Sections */}
+        {home && !isLoading ? (
+          <MusicSections
+            data={home}
+            onPlayPress={handlePress}
+            onLikePress={handleLike}
+          />
+        ) : (
+          <ActivityIndicator
+            size="large"
+            color={COLORS.primary}
+            style={{ marginTop: hp(40) }}
+          />
+        )}
 
-      <Loader isLoading={isPlaylistLoading || albumLoading} />
+        <Loader isLoading={isPlaylistLoading || albumLoading} />
+      </ImageBackground>
     </View>
   );
 }
@@ -274,7 +284,7 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: "transparent",
   },
 
   quickAccessContainer: {
@@ -284,7 +294,7 @@ const styles = StyleSheet.create({
     padding: sp(12),
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: COLORS.surface,
+    backgroundColor: "transparent",
     borderBottomLeftRadius: sp(16),
     borderBottomRightRadius: sp(16),
   },

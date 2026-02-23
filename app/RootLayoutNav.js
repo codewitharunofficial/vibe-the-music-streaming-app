@@ -169,8 +169,8 @@ export default function RootLayoutNav() {
 
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <ThemeProvider value={DefaultTheme}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }}>
+      {/* <ThemeProvider value={DarkTheme}> */}
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="recents" options={{ headerShown: false }} />
@@ -240,7 +240,7 @@ export default function RootLayoutNav() {
           moveSong={moveSong}
           handleQueueSong={() => addToRNTPQueue(selectedTrack)}
         />
-      </ThemeProvider>
+      {/* </ThemeProvider> */}
     </SafeAreaView>
   );
 }

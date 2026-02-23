@@ -9,6 +9,7 @@ import {
   Alert,
   useColorScheme,
   Dimensions,
+  ImageBackground,
 } from "react-native";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
@@ -59,7 +60,7 @@ const UserProfile = () => {
         "https://www.googleapis.com/userinfo/v2/me",
         {
           headers: { Authorization: `Bearer ${accessToken}` },
-        }
+        },
       );
       const userData = await response.json();
 
@@ -84,7 +85,7 @@ const UserProfile = () => {
         `${process.env.EXPO_PUBLIC_API}/api/login`,
         {
           email: userData.email,
-        }
+        },
       );
 
       if (data.success) {
@@ -115,7 +116,7 @@ const UserProfile = () => {
           email: userData.email,
           name: userData.name,
           profile: userData.picture,
-        }
+        },
       );
 
       if (data.success) {
@@ -157,115 +158,123 @@ const UserProfile = () => {
   }, []);
 
   return (
-    <View
-      style={[
-        styles.container,
-        { paddingBottom: currentSong ? height * 0.1 : 0 },
-      ]}
+    <ImageBackground
+      source={require("@/assets/images/background.jpg")}
+      blurRadius={10}
+      style={{ flex: 1 }}
     >
-      {userInfo ? (
-        <Animated.View style={[styles.profileContainer, { opacity: fadeAnim }]}>
-          <Image
-            source={{
-              uri: userInfo.profilePic || "https://via.placeholder.com/150",
-            }}
-            style={styles.profilePhoto}
-          />
-          <Text style={styles.userName}>{userInfo.name || "User"}</Text>
-          <Text style={styles.userEmail}>
-            {userInfo?.email || "email@example.com"}
-          </Text>
-
-          {/* router Buttons */}
-          <View style={styles.navButtons}>
-            <TouchableOpacity
-              style={styles.navButton}
-              onPress={() => router.navigate({ pathname: "/favourites" })}
-            >
-              <MaterialIcons name="favorite" size={24} color="#FF4D67" />
-              <Text style={styles.navText}>Favourites</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.navButton}
-              onPress={() => router.navigate({ pathname: "/recents/" })}
-            >
-              <MaterialIcons name="history" size={24} color="#4DA6FF" />
-              <Text style={styles.navText}>Recently Played</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.navButton}
-              onPress={() => router.navigate({ pathname: "/soon" })}
-            >
-              <MaterialIcons
-                name="play-circle-fill"
-                size={24}
-                color="#FFC14D"
-              />
-              <Text style={styles.navText}>Most Played</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.navButton}
-              onPress={() => router.navigate({ pathname: "/playlists" })}
-            >
-              <MaterialIcons name="playlist-play" size={24} color="#E600E6" />
-              <Text style={styles.navText}>Your Playlists</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Sign Out Button */}
-          <TouchableOpacity
-            onPress={handleSignOut}
-            style={styles.signOutButton}
+      <View
+        style={[
+          styles.container,
+          { paddingBottom: currentSong ? height * 0.1 : 0 },
+        ]}
+      >
+        {userInfo ? (
+          <Animated.View
+            style={[styles.profileContainer, { opacity: fadeAnim }]}
           >
-            <Text style={styles.signOutText}>Sign Out</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      ) : isLoading ? (
-        <Loader isLoading={isLoading} />
-      ) : (
-        <Animated.View style={styles.authCard}>
-          <Image
-            source={require("@/assets/images/icon.png")}
-            style={styles.logo}
-            resizeMode="cover"
-          />
-          <Text style={styles.title}>Welcome to Vibe!</Text>
-          <Text style={styles.subtitle}>
-            Stream your favorite music anytime, anywhere.
-          </Text>
-          <TouchableOpacity
-            onPress={() => {
-              setAuthMethod("Login");
-              promptAsync();
-            }}
-            style={styles.googleButton}
-          >
-            <AntDesign name="google" size={24} color="#fff" />
-            <Text style={styles.buttonText}>Sign In with Google</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => {
-              setAuthMethod("SignUp");
-              promptAsync();
-            }}
-            style={styles.googleButton}
-          >
-            <AntDesign name="google" size={24} color="#fff" />
-            <Text style={styles.buttonText}>Sign Up with Google</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      )}
-    </View>
+            <Image
+              source={{
+                uri: userInfo.profilePic || "https://via.placeholder.com/150",
+              }}
+              style={styles.profilePhoto}
+            />
+            <Text style={styles.userName}>{userInfo.name || "User"}</Text>
+            <Text style={styles.userEmail}>
+              {userInfo?.email || "email@example.com"}
+            </Text>
+
+            {/* router Buttons */}
+            <View style={styles.navButtons}>
+              <TouchableOpacity
+                style={styles.navButton}
+                onPress={() => router.navigate({ pathname: "/favourites" })}
+              >
+                <MaterialIcons name="favorite" size={24} color="#FF4D67" />
+                <Text style={styles.navText}>Favourites</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.navButton}
+                onPress={() => router.navigate({ pathname: "/recents/" })}
+              >
+                <MaterialIcons name="history" size={24} color="#4DA6FF" />
+                <Text style={styles.navText}>Recently Played</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.navButton}
+                onPress={() => router.navigate({ pathname: "/soon" })}
+              >
+                <MaterialIcons
+                  name="play-circle-fill"
+                  size={24}
+                  color="#FFC14D"
+                />
+                <Text style={styles.navText}>Most Played</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.navButton}
+                onPress={() => router.navigate({ pathname: "/playlists" })}
+              >
+                <MaterialIcons name="playlist-play" size={24} color="#E600E6" />
+                <Text style={styles.navText}>Your Playlists</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Sign Out Button */}
+            <TouchableOpacity
+              onPress={handleSignOut}
+              style={styles.signOutButton}
+            >
+              <Text style={styles.signOutText}>Sign Out</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        ) : isLoading ? (
+          <Loader isLoading={isLoading} />
+        ) : (
+          <Animated.View style={styles.authCard}>
+            <Image
+              source={require("@/assets/images/icon.png")}
+              style={styles.logo}
+              resizeMode="cover"
+            />
+            <Text style={styles.title}>Welcome to Vibe!</Text>
+            <Text style={styles.subtitle}>
+              Stream your favorite music anytime, anywhere.
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                setAuthMethod("Login");
+                promptAsync();
+              }}
+              style={styles.googleButton}
+            >
+              <AntDesign name="google" size={24} color="#fff" />
+              <Text style={styles.buttonText}>Sign In with Google</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                setAuthMethod("SignUp");
+                promptAsync();
+              }}
+              style={styles.googleButton}
+            >
+              <AntDesign name="google" size={24} color="#fff" />
+              <Text style={styles.buttonText}>Sign Up with Google</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+      </View>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },

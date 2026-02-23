@@ -83,13 +83,13 @@ const SongCard = ({
         {song.title?.slice(0, 30) || song?.name}
       </Text>
       {song?.author ? (
-        <Text numberOfLines={1} style={[styles.artist, { color: "#fff" }]}>
+        <Text numberOfLines={1} style={[styles.artist, { color: "#000" }]}>
           {song.author?.slice(0, 30)}
         </Text>
       ) : (
         song?.type === "Public" &&
         section === "custom_playlists" && (
-          <Text numberOfLines={1} style={[styles.artist, { color: "#fff" }]}>
+          <Text numberOfLines={1} style={[styles.artist, { color: "#000" }]}>
             {"Arun"}
           </Text>
         )
@@ -110,7 +110,7 @@ const SongsList = ({
 }) => {
   return (
     <View style={styles.listContainer}>
-      <Text style={styles.listTitle}>{title}</Text>
+      {/* <Text style={styles.listTitle}>{title}</Text> */}
       <View style={styles.container}>
         <FlatList
           data={songs}
@@ -189,7 +189,8 @@ const MusicSections = ({ data, onPlayPress, onLikePress }) => {
 };
 
 const QueueModal = ({ isVisible, onClose, queue }) => {
-  const { setIsSongLoading, currentSong, setCurrentSong, setSongUrl } = useSong();
+  const { setIsSongLoading, currentSong, setCurrentSong, setSongUrl } =
+    useSong();
   const [modalVisible, setModalVisible] = useState(false);
   const { userInfo } = useUser();
   const { currentIndex, setCurrentIndex } = usePlayer();
@@ -229,7 +230,7 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
             duration: 0,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       ).start();
     } else {
       animValue.setValue(0); // Reset if text fits
@@ -344,7 +345,6 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
       onSwipeRelease={() => {
         onClose();
       }}
-
     >
       <ModalContent
         style={{
@@ -391,26 +391,55 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
                       item.artwork ||
                       "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
                   }}
-                  style={{ height: 50, width: 50, padding: 10, borderRadius: 10 }}
+                  style={{
+                    height: 50,
+                    width: 50,
+                    padding: 10,
+                    borderRadius: 10,
+                  }}
                 />
                 <View style={{ flexDirection: "column", flex: 1 }}>
-                  <View style={{ overflow: 'hidden', width: containerWidth }}>
-                    <Animated.View style={{ transform: [{ translateX: (currentSong?.id || currentSong?.videoId) === (item.id || item.videoId) ? artistAnim : 0 }] }}>
+                  <View style={{ overflow: "hidden", width: containerWidth }}>
+                    <Animated.View
+                      style={{
+                        transform: [
+                          {
+                            translateX:
+                              (currentSong?.id || currentSong?.videoId) ===
+                              (item.id || item.videoId)
+                                ? artistAnim
+                                : 0,
+                          },
+                        ],
+                      }}
+                    >
                       <Text
                         style={styles.songTitle}
                         numberOfLines={1}
-                        onLayout={(e) => handleTextLayout(itemId, 'title', e)}
+                        onLayout={(e) => handleTextLayout(itemId, "title", e)}
                       >
                         {item.title || "Unknown Title"}
                       </Text>
                     </Animated.View>
                   </View>
-                  <View style={{ overflow: 'hidden', width: containerWidth }}>
-                    <Animated.View style={{ transform: [{ translateX: (currentSong?.id || currentSong?.videoId) === (item.id || item.videoId) ? artistAnim : 0 }] }}>
+                  <View style={{ overflow: "hidden", width: containerWidth }}>
+                    <Animated.View
+                      style={{
+                        transform: [
+                          {
+                            translateX:
+                              (currentSong?.id || currentSong?.videoId) ===
+                              (item.id || item.videoId)
+                                ? artistAnim
+                                : 0,
+                          },
+                        ],
+                      }}
+                    >
                       <Text
                         style={styles.artist}
                         numberOfLines={1}
-                        onLayout={(e) => handleTextLayout(itemId, 'artist', e)}
+                        onLayout={(e) => handleTextLayout(itemId, "artist", e)}
                       >
                         {item.author || "Unknown Artist"}
                       </Text>
@@ -444,7 +473,6 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
     </BottomModal>
   );
 };
-
 
 const NowPlayingScreen = React.memo(
   ({ isVisible, setIsVisible, isSongLoading }) => {
@@ -486,28 +514,31 @@ const NowPlayingScreen = React.memo(
     };
 
     // Marquee Animation Logic
-    const startMarquee = useCallback((animValue, textWidth) => {
-      if (textWidth > containerWidth) {
-        const duration = textWidth * 20; // Adjust speed: 20ms per pixel
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(animValue, {
-              toValue: -textWidth,
-              duration: duration,
-              useNativeDriver: true,
-              delay: 1000, // Pause before starting
-            }),
-            Animated.timing(animValue, {
-              toValue: containerWidth,
-              duration: 0,
-              useNativeDriver: true,
-            }),
-          ])
-        ).start();
-      } else {
-        animValue.setValue(0); // Reset if text fits
-      }
-    }, [containerWidth]);
+    const startMarquee = useCallback(
+      (animValue, textWidth) => {
+        if (textWidth > containerWidth) {
+          const duration = textWidth * 20; // Adjust speed: 20ms per pixel
+          Animated.loop(
+            Animated.sequence([
+              Animated.timing(animValue, {
+                toValue: -textWidth,
+                duration: duration,
+                useNativeDriver: true,
+                delay: 1000, // Pause before starting
+              }),
+              Animated.timing(animValue, {
+                toValue: containerWidth,
+                duration: 0,
+                useNativeDriver: true,
+              }),
+            ]),
+          ).start();
+        } else {
+          animValue.setValue(0); // Reset if text fits
+        }
+      },
+      [containerWidth],
+    );
 
     // Reset and start animation when song changes or text width updates
     useEffect(() => {
@@ -515,7 +546,14 @@ const NowPlayingScreen = React.memo(
       artistAnim.setValue(0);
       startMarquee(titleAnim, titleWidth);
       startMarquee(artistAnim, artistWidth);
-    }, [currentSong, titleWidth, artistWidth, startMarquee, titleAnim, artistAnim]);
+    }, [
+      currentSong,
+      titleWidth,
+      artistWidth,
+      startMarquee,
+      titleAnim,
+      artistAnim,
+    ]);
 
     // Rest of your existing useEffect and handler functions remain unchanged
     const handleTrackChange = useCallback(async () => {
@@ -575,7 +613,7 @@ const NowPlayingScreen = React.memo(
         (error) => {
           console.error("Playback error:", error);
           showToast("Error playing song", 3000);
-        }
+        },
       );
 
       return () => {
@@ -754,7 +792,7 @@ const NowPlayingScreen = React.memo(
             style={styles.nowPlayingImage}
             resizeMode="cover"
           />
-          <View style={{ overflow: 'hidden', width: containerWidth }}>
+          <View style={{ overflow: "hidden", width: containerWidth }}>
             <Animated.View style={{ transform: [{ translateX: titleAnim }] }}>
               <Text
                 style={styles.nowPlayingTitle}
@@ -765,7 +803,7 @@ const NowPlayingScreen = React.memo(
               </Text>
             </Animated.View>
           </View>
-          <View style={{ overflow: 'hidden', width: containerWidth }}>
+          <View style={{ overflow: "hidden", width: containerWidth }}>
             <Animated.View style={{ transform: [{ translateX: artistAnim }] }}>
               <Text
                 style={styles.nowPlayingArtist}
@@ -794,7 +832,7 @@ const NowPlayingScreen = React.memo(
                   disabled={
                     (isDownloading || isDownloaded) &&
                     (currentDownload?.id || currentDownload?.videoId) ===
-                    (currentSong?.id || currentSong?.videoId)
+                      (currentSong?.id || currentSong?.videoId)
                   }
                   style={[
                     styles.shareButton,
@@ -813,7 +851,7 @@ const NowPlayingScreen = React.memo(
                   }}
                 >
                   {isDownloading &&
-                    (currentDownload?.id || currentDownload?.videoId) ===
+                  (currentDownload?.id || currentDownload?.videoId) ===
                     (currentSong?.id || currentSong?.videoId) ? (
                     <View
                       style={{
@@ -829,8 +867,8 @@ const NowPlayingScreen = React.memo(
                       </Text>
                     </View>
                   ) : downloaded.find(
-                    (s) => s.id === (currentSong.id || currentSong.videoId)
-                  ) ? (
+                      (s) => s.id === (currentSong.id || currentSong.videoId),
+                    ) ? (
                     <FontAwesome
                       name="check-circle"
                       size={25}
@@ -1003,9 +1041,6 @@ const NowPlayingScreen = React.memo(
 //   },
 // };
 
-
-
-
 const MiniPlayer = ({
   song,
   onOpen,
@@ -1147,29 +1182,32 @@ const TrackComponent = ({
   };
 
   // Marquee Animation Logic
-  const startMarquee = useCallback((animValue, textWidth) => {
-    if (textWidth > containerWidth) {
-      const duration = textWidth * 20; // Adjust speed: 20ms per pixel
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(animValue, {
-            toValue: -textWidth,
-            duration: duration,
-            useNativeDriver: true,
-            delay: 1000, // Pause before starting
-            easing: Easing.linear,
-          }),
-          Animated.timing(animValue, {
-            toValue: containerWidth,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      animValue.setValue(0); // Reset if text fits
-    }
-  }, [containerWidth]);
+  const startMarquee = useCallback(
+    (animValue, textWidth) => {
+      if (textWidth > containerWidth) {
+        const duration = textWidth * 20; // Adjust speed: 20ms per pixel
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(animValue, {
+              toValue: -textWidth,
+              duration: duration,
+              useNativeDriver: true,
+              delay: 1000, // Pause before starting
+              easing: Easing.linear,
+            }),
+            Animated.timing(animValue, {
+              toValue: containerWidth,
+              duration: 0,
+              useNativeDriver: true,
+            }),
+          ]),
+        ).start();
+      } else {
+        animValue.setValue(0); // Reset if text fits
+      }
+    },
+    [containerWidth],
+  );
 
   // Start or reset marquee animation when item or text width changes
   useEffect(() => {
@@ -1239,8 +1277,9 @@ const TrackComponent = ({
 
       const track = {
         id: item.videoId || item.id,
-        url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${item.videoId || item.id
-          }&email=${userInfo?.email || ""}`,
+        url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
+          item.videoId || item.id
+        }&email=${userInfo?.email || ""}`,
         title: item.title || "Unknown Title",
         artist: item.author || "Unknown Artist",
         artwork:
@@ -1256,14 +1295,18 @@ const TrackComponent = ({
 
       console.log("Songs To Be Added In The Queue: ", songs);
 
-      const newQueue = songs.slice(index, songs.length > 10 ? 10 : songs.length);
+      const newQueue = songs.slice(
+        index,
+        songs.length > 10 ? 10 : songs.length,
+      );
       setCurrentQueue(newQueue);
 
       const tracks = newQueue.map((s) => ({
         id: s.videoId || s.id,
         url:
           s.uri ||
-          `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${s.videoId || s.id
+          `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
+            s.videoId || s.id
           }&email=${userInfo?.email || ""}`,
         title: s.title || s.filename || "Unknown Title",
         artist: s.author || s.artist || "Unknown Artist",
@@ -1315,37 +1358,70 @@ const TrackComponent = ({
       onPress={play}
       style={styles.trackItem}
     >
-      <View style={{ flexDirection: 'row', flex: 0.8 }}>
+      <View style={{ flexDirection: "row", flex: 0.8 }}>
         <Image
           source={{
             uri:
-              (typeof item.thumbnail === 'object' && item.thumbnail?.url) ||
+              (typeof item.thumbnail === "object" && item.thumbnail?.url) ||
               item.thumbnail ||
               item.artwork ||
-              'https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png',
+              "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
           }}
           style={styles.trackImage}
         />
         <View style={styles.trackDetails}>
-          <View style={{ overflow: 'hidden', width: (currentSong?.id || currentSong?.videoId) === (item.videoId || item.id) ? containerWidth : '100%' }}>
-            <Animated.View style={{ transform: [{ translateX: (currentSong?.id || currentSong?.videoId) === (item.videoId || item.id) ? titleAnim : 0 }] }}>
+          <View
+            style={{
+              overflow: "hidden",
+              width:
+                (currentSong?.id || currentSong?.videoId) ===
+                (item.videoId || item.id)
+                  ? containerWidth
+                  : "100%",
+            }}
+          >
+            <Animated.View
+              style={{
+                transform: [
+                  {
+                    translateX:
+                      (currentSong?.id || currentSong?.videoId) ===
+                      (item.videoId || item.id)
+                        ? titleAnim
+                        : 0,
+                  },
+                ],
+              }}
+            >
               <Text
                 numberOfLines={1}
                 style={styles.trackTitle}
                 onLayout={handleTitleLayout}
               >
-                {item.title || item.filename || 'Unknown Title'}
+                {item.title || item.filename || "Unknown Title"}
               </Text>
             </Animated.View>
           </View>
-          <View style={{ overflow: 'hidden', width: containerWidth }}>
-            <Animated.View style={{ transform: [{ translateX: (currentSong?.id || currentSong?.videoId) === (item.videoId || item.id) ? artistAnim : 0 }] }}>
+          <View style={{ overflow: "hidden", width: containerWidth }}>
+            <Animated.View
+              style={{
+                transform: [
+                  {
+                    translateX:
+                      (currentSong?.id || currentSong?.videoId) ===
+                      (item.videoId || item.id)
+                        ? artistAnim
+                        : 0,
+                  },
+                ],
+              }}
+            >
               <Text
                 numberOfLines={1}
                 style={styles.trackArtist}
                 onLayout={handleArtistLayout}
               >
-                {item.author || item.artist || 'Unknown'}
+                {item.author || item.artist || "Unknown"}
               </Text>
             </Animated.View>
           </View>
@@ -1353,21 +1429,21 @@ const TrackComponent = ({
       </View>
       {(currentSong?.videoId || currentSong?.id) ===
         (item?.videoId || item?.id) && (
-          <Animated.View style={{ transform: [{ rotate: spin }] }}>
-            <FontAwesome5 name="compact-disc" size={24} color={'#ffff'} />
-          </Animated.View>
-        )}
-      {playingFrom !== 'Local' && (
+        <Animated.View style={{ transform: [{ rotate: spin }] }}>
+          <FontAwesome5 name="compact-disc" size={24} color={"#ffff"} />
+        </Animated.View>
+      )}
+      {playingFrom !== "Local" && (
         <TouchableOpacity
           onPress={() => handleLike(userInfo, setFavorites, item)} // Pass item instead of currentSong
           style={{ marginRight: 10 }}
         >
           {favorites.find(
-            (song) => (song.videoId || song.id) === (item.videoId || item.id)
+            (song) => (song.videoId || song.id) === (item.videoId || item.id),
           ) ? (
-            <Ionicons name="heart" size={24} color={'#FF4D67'} />
+            <Ionicons name="heart" size={24} color={"#FF4D67"} />
           ) : (
-            <Ionicons name="heart-outline" size={24} color={'#fff'} />
+            <Ionicons name="heart-outline" size={24} color={"#fff"} />
           )}
         </TouchableOpacity>
       )}
@@ -1380,13 +1456,13 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     alignItems: "center",
     gap: sp(4),
-    width: wp(150),
-    height: hp(240),
-    marginHorizontal: sp(2),
+    width: wp(120),
+    // height: hp(240),
+    marginHorizontal: sp(4),
   },
 
   image: {
-    width: wp(150),
+    width: wp(120),
     aspectRatio: 1,
     borderRadius: sp(12),
     backgroundColor: COLORS.surfaceAlt,
@@ -1395,13 +1471,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: fs(14),
     fontWeight: "600",
-    color: COLORS.textPrimary,
+    color: "#000",
     textAlign: "center",
   },
 
   artist: {
-    fontSize: fs(12),
-    color: COLORS.textSecondary,
+    fontSize: fs(14),
+    color: "#000",
     textAlign: "center",
   },
 
@@ -1415,24 +1491,27 @@ const styles = StyleSheet.create({
   },
 
   listContainer: {
-    marginVertical: hp(3),
     padding: sp(5),
-    borderRadius: sp(14),
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
+    backgroundColor: "lightgray",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.border,
+    shadowColor: "#000",
+    shadowOffset: 4,
+    shadowRadius: 5,
+    opacity: 0.5,
   },
 
   listTitle: {
     fontSize: fs(18),
     fontWeight: "700",
-    color: COLORS.textPrimary,
-    marginBottom: hp(12),
+    color: "#000",
+    marginBottom: hp(1),
   },
 
   container: {
-    height: hp(200),
-    paddingVertical: hp(3),
+    height: hp(180),
+    paddingVertical: hp(10),
   },
 
   quickAccessButton: {
@@ -1453,11 +1532,11 @@ const styles = StyleSheet.create({
   },
 
   sectionContainer: {
-    padding: sp(5),
+    padding: sp(3),
   },
 
   sectionTitle: {
-    color: COLORS.textPrimary,
+    color: "#000",
     fontSize: fs(16),
     fontWeight: "700",
     margin: hp(4),

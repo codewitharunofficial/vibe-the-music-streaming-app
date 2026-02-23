@@ -13,7 +13,6 @@ import {
 } from "@react-navigation/native";
 
 export default function RootLayoutNav() {
-  const colorScheme = useColorScheme();
   const {
     songUrl,
     setSongUrl,
@@ -28,7 +27,7 @@ export default function RootLayoutNav() {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <Stack screenOptions={{headerStyle: {backgroundColor: '#1A1A2E'}}} >
+      <Stack screenOptions={{headerStyle: {backgroundColor: '#054465'}, headerTitleStyle: {color: '#fff'}}} >
         <Stack.Screen name="index" options={{ headerTitle: "Playlist" }} />
       </Stack>
     </SafeAreaView>

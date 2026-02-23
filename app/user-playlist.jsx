@@ -266,6 +266,7 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     justifyContent: "center",
     gap: 10,
+    color: '#fff'
   },
   header: {
     alignItems: "center",

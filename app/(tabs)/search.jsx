@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   Dimensions,
+  ImageBackground,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
@@ -15,7 +16,7 @@ import { useSong } from "@/context/SongContext";
 import { usePlayer } from "@/context/PlayerContext";
 import { useUser } from "@/context/User";
 import { TrackComponent } from "@/components/Component";
-import {COLORS} from "@/utils/colors";
+import { COLORS } from "@/utils/colors";
 
 const SearchScreen = () => {
   const [query, setQuery] = useState("");
@@ -23,7 +24,16 @@ const SearchScreen = () => {
   const [loading, setLoading] = useState(false);
   const [token, setToken] = useState("");
 
-  const { songUrl, setSongUrl, isSongLoading, setIsSongLoading, currentSong, setCurrentSong, open, setOpen } = useSong();
+  const {
+    songUrl,
+    setSongUrl,
+    isSongLoading,
+    setIsSongLoading,
+    currentSong,
+    setCurrentSong,
+    open,
+    setOpen,
+  } = useSong();
   const { setCurrentQueue } = usePlayer();
   const { userInfo } = useUser();
   const { height } = Dimensions.get("window");
@@ -94,63 +104,73 @@ const SearchScreen = () => {
   );
 
   return (
-    <View
-      style={[
-        styles.container,
-        { paddingBottom: currentSong ? height * 0.09 : 0 },
-      ]}
+    <ImageBackground
+      source={require("@/assets/images/background.jpg")}
+      blurRadius={10}
+      style={{ flex: 1 }}
     >
-      {/* Search Bar */}
-      <View style={styles.searchBar}>
-        <TextInput
-          style={styles.input}
-          placeholder="Search songs..."
-          placeholderTextColor="#ffff"
-          value={query}
-          onChangeText={setQuery}
-          onSubmitEditing={fetchSongs}
-        />
-        <TouchableOpacity onPress={fetchSongs} style={styles.searchButton}>
-          <Ionicons name="search" size={24} color="white" />
-        </TouchableOpacity>
-      </View>
+      <View
+        style={[
+          styles.container,
+          { paddingBottom: currentSong ? height * 0.09 : 0 },
+        ]}
+      >
+        {/* Search Bar */}
+        <View style={styles.searchBar}>
+          <TextInput
+            style={styles.input}
+            placeholder="Search songs..."
+            placeholderTextColor="#ffff"
+            value={query}
+            onChangeText={setQuery}
+            onSubmitEditing={fetchSongs}
+          />
+          <TouchableOpacity onPress={fetchSongs} style={styles.searchButton}>
+            <Ionicons name="search" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
 
-      {/* Song List */}
-      {loading && songs.length === 0 ? (
-        <ActivityIndicator size="large" color="white" style={{ marginTop: 20 }} />
-      ) : songs.length > 0 ? (
-        <FlatList
-          data={songs}
-          keyExtractor={(item, index) => item?.videoId || index.toString()}
-          renderItem={({ item, index }) => (
-            <TrackComponent
-              item={item}
-              songs={songs}
-              index={index}
-              setCurrentQueue={setCurrentQueue}
-              setCurrentSong={setCurrentSong}
-              setIsSongLoading={setIsSongLoading}
-              setSongUrl={setSongUrl}
-              userInfo={userInfo}
-              playingFrom="Search"
-            />
-          )}
-          showsVerticalScrollIndicator={false}
-          onEndReached={loadMoreSongs}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={token ? footerItem : null}
-        />
-      ) : (
-        <Text style={styles.noResults}>No songs found.</Text>
-      )}
-    </View>
+        {/* Song List */}
+        {loading && songs.length === 0 ? (
+          <ActivityIndicator
+            size="large"
+            color="white"
+            style={{ marginTop: 20 }}
+          />
+        ) : songs.length > 0 ? (
+          <FlatList
+            data={songs}
+            keyExtractor={(item, index) => item?.videoId || index.toString()}
+            renderItem={({ item, index }) => (
+              <TrackComponent
+                item={item}
+                songs={songs}
+                index={index}
+                setCurrentQueue={setCurrentQueue}
+                setCurrentSong={setCurrentSong}
+                setIsSongLoading={setIsSongLoading}
+                setSongUrl={setSongUrl}
+                userInfo={userInfo}
+                playingFrom="Search"
+              />
+            )}
+            showsVerticalScrollIndicator={false}
+            onEndReached={loadMoreSongs}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={token ? footerItem : null}
+          />
+        ) : (
+          <Text style={styles.noResults}>No songs found.</Text>
+        )}
+      </View>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: "transparent",
     padding: 20,
   },
   searchBar: {
