@@ -237,14 +237,14 @@ export default function Home() {
   };
 
   return (
-    <View
-      style={[styles.container, { paddingBottom: currentSong ? hp(90) : 0 }]}
+    <ImageBackground
+      source={ require("@/assets/images/background.jpg")}
+      blurRadius={10}
+      style={{flex: 1}}
     >
-      <ImageBackground
-        source={ require("@/assets/images/background.jpg")}
-        blurRadius={10}
-        style={{flex: 1}}
-      >
+    <View
+      style={[styles.container, { paddingBottom: currentSong ? hp(75) : 0, }]}
+    >
         {/* Quick Access */}
         <View style={styles.quickAccessContainer}>
           <QuickAccessButton
@@ -275,8 +275,8 @@ export default function Home() {
         )}
 
         <Loader isLoading={isPlaylistLoading || albumLoading} />
-      </ImageBackground>
     </View>
+      </ImageBackground>
   );
 }
 

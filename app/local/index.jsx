@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
+  ImageBackground,
 } from "react-native";
 import { showToast } from "@/constants/utils";
 import * as MediaLibrary from "expo-media-library";
@@ -37,7 +38,7 @@ const LocalSongsScreen = () => {
         Alert.alert(
           "Permission Denied",
           "Please grant media library permissions to access local songs.",
-          [{ text: "OK" }]
+          [{ text: "OK" }],
         );
         setLoading(false);
         return;
@@ -118,53 +119,59 @@ const LocalSongsScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      {loading ? (
-        <Loader isLoading={loading} />
-      ) : songs?.length > 0 ? (
-        <FlatList
-          data={songs}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item, index }) => (
-            <TrackComponent
-              item={normalizeSong(item)}
-              songs={songs.map(normalizeSong)}
-              setCurrentQueue={setCurrentQueue}
-              setCurrentSong={setCurrentSong}
-              setIsSongLoading={setIsSongLoading}
-              setSongUrl={setSongUrl}
-              index={index}
-              userInfo={userInfo || {}}
-              playingFrom="Local"
-            />
-          )}
-          contentContainerStyle={{ flexDirection: "column" }}
-          scrollEnabled={true}
-          alwaysBounceVertical
-          showsVerticalScrollIndicator={false}
-          onEndReached={() => {
-            if (token !== 0) {
-              loadMore();
-            }
-          }}
-          ListFooterComponent={hasMore && footerItem}
-        />
-      ) : (
-        <Text style={styles.noResults}>No Local Songs Found!!</Text>
-      )}
-    </View>
+    <ImageBackground
+      source={require("@/assets/images/background.jpg")}
+      blurRadius={10}
+      style={{ flex: 1 }}
+    >
+      <View style={styles.container}>
+        {loading ? (
+          <Loader isLoading={loading} />
+        ) : songs?.length > 0 ? (
+          <FlatList
+            data={songs}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item, index }) => (
+              <TrackComponent
+                item={normalizeSong(item)}
+                songs={songs.map(normalizeSong)}
+                setCurrentQueue={setCurrentQueue}
+                setCurrentSong={setCurrentSong}
+                setIsSongLoading={setIsSongLoading}
+                setSongUrl={setSongUrl}
+                index={index}
+                userInfo={userInfo || {}}
+                playingFrom="Local"
+              />
+            )}
+            contentContainerStyle={{ flexDirection: "column" }}
+            scrollEnabled={true}
+            alwaysBounceVertical
+            showsVerticalScrollIndicator={false}
+            onEndReached={() => {
+              if (token !== 0) {
+                loadMore();
+              }
+            }}
+            ListFooterComponent={hasMore && footerItem}
+          />
+        ) : (
+          <Text style={styles.noResults}>No Local Songs Found!!</Text>
+        )}
+      </View>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#2F1C6A",
+    backgroundColor: "transparent",
     padding: 20,
   },
   noResults: {
     textAlign: "center",
-    color: "#888",
+    color: "#000",
     marginTop: 20,
   },
 });

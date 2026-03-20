@@ -149,7 +149,7 @@ export const downloadAndSaveSong = async (
           const progressPercentage = Math.round(
             (downloadProgress.totalBytesWritten /
               downloadProgress.totalBytesExpectedToWrite) *
-              100
+            100
           );
           setProgress(progressPercentage);
         }
@@ -230,6 +230,8 @@ export const handleLike = async (userInfo, setFavorites, currentSong) => {
         (currentSong?.videoId || currentSong?.id)
     );
 
+    console.log(isLiked);
+
     // Show immediate toast for user feedback
     showToast(
       isLiked ? "Removing from Favourites..." : "Adding to Favourites...",
@@ -238,6 +240,8 @@ export const handleLike = async (userInfo, setFavorites, currentSong) => {
 
     // Call API to toggle like status on server
     const data = await handleLiked(userInfo.email, currentSong);
+
+    console.log(data);
 
     if (data?.favourites) {
       // Save updated favorites locally

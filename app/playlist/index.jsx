@@ -6,6 +6,7 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
+  ImageBackground,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { handleRecentlyPlayed, playASongs } from "@/constants/apiCalls";
@@ -26,62 +27,70 @@ const PlaylistScreen = () => {
   const { userInfo, setUserInfo } = useUser();
 
   return (
-    <View style={styles.container}>
-      {/* Playlist Details */}
-      <View style={styles.header}>
-        <Image
-          source={{
-            uri:
-              playlist?.songs[0]?.thumbnail ||
-              playlist?.playlistCover ||
-              playlist?.poster,
-          }}
-          style={styles.coverImage}
-        />
-        <View style={styles.details}>
-          <Text style={styles.title}>{playlist?.title || playlist?.name}</Text>
-          <Text style={styles.author}>
-            {playlist?.playlistAuthor || "Developer"}
-          </Text>
-          <Text style={styles.release}>
-            {playlist?.playlistRelease ||
-              moment(playlist?.createdAt).toDate().toLocaleDateString("IN")}
-          </Text>
-          <Text style={styles.description}>
-            {playlist?.playlistDescription || playlist.description}
-          </Text>
-        </View>
-      </View>
-
-      <FlatList
-        data={playlist.results || playlist?.songs}
-        // keyExtractor={(item) => item?.videoId.toString() || item?.id.toString()}
-        renderItem={({ item, index }) => (
-          <TrackComponent
-            item={item}
-            songs={playlist.results || playlist?.songs}
-            setCurrentQueue={setCurrentQueue}
-            setCurrentSong={setCurrentSong}
-            setIsSongLoading={setIsSongLoading}
-            setSongUrl={setSongUrl}
-            index={index}
-            userInfo={userInfo}
-            playingFrom={playlist?.songs ? "Custom Playlist" : "Playlists"}
+    <ImageBackground
+      source={require("@/assets/images/background.jpg")}
+      blurRadius={10}
+      style={{ flex: 1 }}
+    >
+      <View style={styles.container}>
+        {/* Playlist Details */}
+        <View style={styles.header}>
+          <Image
+            source={{
+              uri:
+                playlist?.songs[0]?.thumbnail ||
+                playlist?.playlistCover ||
+                playlist?.poster,
+            }}
+            style={styles.coverImage}
           />
-        )}
-        contentContainerStyle={{ flexDirection: "column-reverse" }}
-        scrollEnabled={true}
-        alwaysBounceVertical
-        showsVerticalScrollIndicator={false}
-      />
-    </View>
+          <View style={styles.details}>
+            <Text style={styles.title}>
+              {playlist?.title || playlist?.name}
+            </Text>
+            <Text style={styles.author}>
+              {playlist?.playlistAuthor || "Developer"}
+            </Text>
+            <Text style={styles.release}>
+              {playlist?.playlistRelease ||
+                moment(playlist?.createdAt).toDate().toLocaleDateString("IN")}
+            </Text>
+            <Text style={styles.description}>
+              {playlist?.playlistDescription || playlist.description}
+            </Text>
+          </View>
+        </View>
+
+        <FlatList
+          data={playlist.results || playlist?.songs}
+          // keyExtractor={(item) => item?.videoId.toString() || item?.id.toString()}
+          renderItem={({ item, index }) => (
+            <TrackComponent
+              item={item}
+              songs={playlist.results || playlist?.songs}
+              setCurrentQueue={setCurrentQueue}
+              setCurrentSong={setCurrentSong}
+              setIsSongLoading={setIsSongLoading}
+              setSongUrl={setSongUrl}
+              index={index}
+              userInfo={userInfo}
+              playingFrom={playlist?.songs ? "Custom Playlist" : "Playlists"}
+            />
+          )}
+          contentContainerStyle={{ flexDirection: "column-reverse" }}
+          scrollEnabled={true}
+          alwaysBounceVertical
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#2F1C6A",
+    backgroundColor: "transparent",
     padding: 10,
   },
   header: {

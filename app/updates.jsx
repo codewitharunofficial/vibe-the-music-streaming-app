@@ -1,5 +1,6 @@
 import {
   Dimensions,
+  ImageBackground,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -16,7 +17,7 @@ const UpdatesScreen = () => {
   const theme = useColorScheme();
 
   const textColor =
-    theme === "dark" ? DarkTheme.colors.text : DefaultTheme.colors.text;
+    theme === "dark" ? DarkTheme.colors.card : DefaultTheme.colors.card;
   const reloadButton =
     theme === "dark" ? DarkTheme.colors.primary : DefaultTheme.colors.primary;
 
@@ -65,52 +66,57 @@ const UpdatesScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={[styles.header, { color: textColor }]}>Updates</Text>
+    <ImageBackground
+      source={require("@/assets/images/background.jpg")}
+      blurRadius={10}
+      style={{ flex: 1 }}
+    >
+      <View style={styles.container}>
+        <Text style={[styles.header, { color: textColor }]}>Updates</Text>
 
-      {/* Current Version Info */}
-      <View style={styles.infoBox}>
-        <Text style={{ color: textColor }}>
-          Running Version: {Updates.runtimeVersion}
-        </Text>
-        <Text style={{ color: textColor }}>
-          Last Updated: {moment(Updates.creationTime).format("DD-MM-YYYY")}
-        </Text>
-      </View>
-
-      {/* Show Downloaded Update Info */}
-      {updateInfo.downloadedUpdate && (
-        <Text style={{ color: textColor, marginTop: 10 }}>
-          Update Released On:{" "}
-          {moment(updateInfo.downloadedUpdate.creationTime).format(
-            "DD-MM-YYYY"
-          )}
-        </Text>
-      )}
-
-      {/* Download Update Button */}
-      {updateInfo.isUpdateAvailable && !updateInfo.downloadedUpdate && (
-        <TouchableOpacity
-          onPress={handleDownloadUpdate}
-          style={[styles.button, { backgroundColor: reloadButton }]}
-          disabled={updateInfo.isDownloading}
-        >
+        <View style={styles.infoBox}>
           <Text style={{ color: textColor }}>
-            {updateInfo.isDownloading ? "Downloading..." : "Download Update"}
+            Running Version: {Updates.runtimeVersion}
           </Text>
-        </TouchableOpacity>
-      )}
+          <Text style={{ color: textColor }}>
+            Last Updated: {moment(Updates.creationTime).format("DD-MM-YYYY")}
+          </Text>
+        </View>
 
-      {/* Reload Button to Apply Update */}
-      {updateInfo.downloadedUpdate && (
-        <TouchableOpacity
-          onPress={() => Updates.reloadAsync()}
-          style={[styles.button, { backgroundColor: reloadButton }]}
-        >
-          <Text style={{ color: textColor }}>Reload to Apply Update</Text>
-        </TouchableOpacity>
-      )}
-    </View>
+        {/* Show Downloaded Update Info */}
+        {updateInfo.downloadedUpdate && (
+          <Text style={{ color: textColor, marginTop: 10 }}>
+            Update Released On:{" "}
+            {moment(updateInfo.downloadedUpdate.creationTime).format(
+              "DD-MM-YYYY",
+            )}
+          </Text>
+        )}
+
+        {/* Download Update Button */}
+        {updateInfo.isUpdateAvailable && !updateInfo.downloadedUpdate && (
+          <TouchableOpacity
+            onPress={handleDownloadUpdate}
+            style={[styles.button, { backgroundColor: reloadButton }]}
+            disabled={updateInfo.isDownloading}
+          >
+            <Text style={{ color: textColor }}>
+              {updateInfo.isDownloading ? "Downloading..." : "Download Update"}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Reload Button to Apply Update */}
+        {updateInfo.downloadedUpdate && (
+          <TouchableOpacity
+            onPress={() => Updates.reloadAsync()}
+            style={[styles.button, { backgroundColor: reloadButton }]}
+          >
+            <Text style={{ color: textColor }}>Reload to Apply Update</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </ImageBackground>
   );
 };
 
@@ -122,7 +128,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 20,
-    backgroundColor: '#2F1C6A',
+    backgroundColor: "transparent",
   },
   header: {
     fontSize: 20,

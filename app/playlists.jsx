@@ -103,7 +103,7 @@ const PlaylistScreen = () => {
           }
         />
       ) : (
-        <ActivityIndicator color={"#1DB954"} size={24} />
+        <ActivityIndicator color={"#fff"} size={24} />
       )}
       <CreatePlaylistModal
         visible={modalVisible}

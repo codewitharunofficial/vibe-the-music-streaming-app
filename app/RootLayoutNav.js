@@ -148,7 +148,7 @@ export default function RootLayoutNav() {
     loadUserSession();
   }, []);
 
-  const headerColor = "#fff";
+  const headerColor = "#054465";
 
 
 
@@ -169,77 +169,77 @@ export default function RootLayoutNav() {
 
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }}>
+    <SafeAreaView style={{ flex: 1 }}>
       {/* <ThemeProvider value={DarkTheme}> */}
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="recents" options={{ headerShown: false }} />
+      <Stack screenOptions={{ navigationBarColor: "#054465" }} >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="recents" options={{ headerShown: false }} />
 
-          <Stack.Screen name="playlist" options={{ headerShown: false }} />
-          <Stack.Screen name="album" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="favourites"
-            options={{ headerShown: true, headerTitle: "Favourite Songs", headerTitleStyle: { color: headerColor } }}
-          />
-          <Stack.Screen
-            name="soon"
-            options={{ headerShown: true, headerTitle: "Not Available", headerTitleStyle: { color: headerColor } }}
-          />
-          <Stack.Screen
-            name="playlists"
-            options={{
-              headerShown: true, headerTitle: "My Playlists", headerTitleStyle: { color: headerColor }, headerRight: () => <TouchableOpacity onPress={() => handleRefresh()} >
-                <EvilIcons name="refresh" size={30} color={'white'} />
-              </TouchableOpacity>
-            }}
+        <Stack.Screen name="playlist" options={{ headerShown: false, headerStyle: { backgroundColor: "#054465" }, headerTintColor: "#fff" }} />
+        <Stack.Screen name="album" options={{ headerShown: false, headerStyle: { backgroundColor: "#054465" } }} />
+        <Stack.Screen
+          name="favourites"
+          options={{ headerShown: true, headerTitle: "Favourite Songs", headerTitleStyle: { color: headerColor } }}
+        />
+        <Stack.Screen
+          name="soon"
+          options={{ headerShown: true, headerTitle: "Not Available", headerTitleStyle: { color: headerColor } }}
+        />
+        <Stack.Screen
+          name="playlists"
+          options={{
+            headerShown: true, headerTitle: "My Playlists", headerTitleStyle: { color: "#fff", }, headerRight: () => <TouchableOpacity onPress={() => handleRefresh()} >
+              <EvilIcons name="refresh" size={30} color={'white'} />
+            </TouchableOpacity>
+          }}
 
-          />
-          <Stack.Screen
-            name="user-playlist"
-            options={{ headerShown: true, headerTitle: `${playlistName}`, headerTitleStyle: { color: headerColor } }}
-          />
-          <Stack.Screen
-            name="updates"
-            options={{ headerShown: true, headerTitle: `App-Update`, headerTitleStyle: { color: headerColor } }}
-          />
-          <Stack.Screen
-            name="downloaded"
-            options={{ headerShown: true, headerTitle: `Downloaded`, headerTitleStyle: { color: headerColor } }}
-          />
-          <Stack.Screen
-            name="local"
-            options={{ headerShown: true, headerTitle: `Local-Songs`, headerTitleStyle: { color: headerColor } }}
-          />
-        </Stack>
-        <ModalPortal />
+        />
+        <Stack.Screen
+          name="user-playlist"
+          options={{ headerShown: true, headerTitle: `${playlistName}`, headerTitleStyle: { color: headerColor }, headerStyle: { backgroundColor: "#054465" } }}
+        />
+        <Stack.Screen
+          name="updates"
+          options={{ headerShown: true, headerTitle: `App-Update`, headerTitleStyle: { color: headerColor } }}
+        />
+        <Stack.Screen
+          name="downloaded"
+          options={{ headerShown: true, headerTitle: `Downloaded`, headerTitleStyle: { color: headerColor } }}
+        />
+        <Stack.Screen
+          name="local"
+          options={{ headerShown: false, headerTitle: `Local-Songs`, headerTitleStyle: { color: "#fff" }, headerStyle: { backgroundColor: "#054465" } }}
+        />
+      </Stack>
+      <ModalPortal />
 
-        {/* Mini Player */}
-        {currentSong && !open && route[0] === "(tabs)" ? (
-          <MiniPlayer
-            song={currentSong}
-            onOpen={setOpen}
-            isSongLoading={isSongLoading}
-            isPlaying={isPlaying}
-            setIsPlaying={setIsPlaying}
-            route={route[0]}
-          />
-        ) : null}
-
-        <NowPlayingScreen
+      {/* Mini Player */}
+      {currentSong && !open && route[0] === "(tabs)" ? (
+        <MiniPlayer
           song={currentSong}
-          isVisible={open}
-          setIsVisible={setOpen}
+          onOpen={setOpen}
           isSongLoading={isSongLoading}
-          url={songUrl}
+          isPlaying={isPlaying}
+          setIsPlaying={setIsPlaying}
+          route={route[0]}
         />
+      ) : null}
 
-        <TrackOptionModal
-          isVisible={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          song={selectedTrack}
-          moveSong={moveSong}
-          handleQueueSong={() => addToRNTPQueue(selectedTrack)}
-        />
+      <NowPlayingScreen
+        song={currentSong}
+        isVisible={open}
+        setIsVisible={setOpen}
+        isSongLoading={isSongLoading}
+        url={songUrl}
+      />
+
+      <TrackOptionModal
+        isVisible={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        song={selectedTrack}
+        moveSong={moveSong}
+        handleQueueSong={() => addToRNTPQueue(selectedTrack)}
+      />
       {/* </ThemeProvider> */}
     </SafeAreaView>
   );

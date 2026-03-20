@@ -9,6 +9,7 @@ import { FontAwesome6, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useUser } from "@/context/User";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { COLORS } from "@/utils/colors";
+import { fs, hp, sp, wp } from "@/utils/responsive";
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
@@ -27,8 +28,8 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
-        tabBarStyle: { flex: 0.1, alignItems: "center" },
-        tabBarItemStyle: { padding: 15, backgroundColor: "#054465" },
+        tabBarStyle: { height: hp(80), alignItems: "center" },
+        tabBarItemStyle: { padding: sp(15), backgroundColor: "#054465" },
       }}
     >
       <Tabs.Screen
@@ -36,7 +37,11 @@ export default function TabLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="home" color={color} size={focused ? 32 : 24} />
+            <TabBarIcon
+              name="home"
+              color={color}
+              size={focused ? fs(32) : fs(28)}
+            />
           ),
           headerLeft: () => (
             <Link href="/(tabs)" asChild>
@@ -59,6 +64,7 @@ export default function TabLayout() {
           headerTitle: "Vibe",
           headerStyle: { backgroundColor: COLORS.surfaceAlt },
           headerTitleStyle: { color: "#fff" },
+          // tabBarShowLabel: false,
           headerRight: () => {
             return (
               <View
@@ -90,7 +96,11 @@ export default function TabLayout() {
         options={{
           title: "Search",
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name="search" color={color} size={focused ? 32 : 24} />
+            <Ionicons
+              name="search"
+              color={color}
+              size={focused ? fs(32) : fs(28)}
+            />
           ),
           headerTitle: "Search - Vibe",
           headerStyle: { backgroundColor: COLORS.surfaceAlt },
@@ -104,7 +114,11 @@ export default function TabLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name="person" color={color} size={focused ? 32 : 24} />
+            <Ionicons
+              name="person"
+              color={color}
+              size={focused ? fs(32) : fs(28)}
+            />
           ),
           headerStyle: { backgroundColor: COLORS.surfaceAlt },
           headerTitleStyle: { color: "#fff" },

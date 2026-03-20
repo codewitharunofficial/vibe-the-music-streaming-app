@@ -6,11 +6,10 @@ import {
   ActivityIndicator,
   StyleSheet,
   Dimensions,
+  ImageBackground,
 } from "react-native";
 import { useSong } from "@/context/SongContext";
-import {
-  getDownloadedSongs,
-} from "@/constants/cachedData";
+import { getDownloadedSongs } from "@/constants/cachedData";
 import { usePlayer } from "@/context/PlayerContext";
 import { useUser } from "@/context/User";
 import { TrackComponent } from "@/components/Component";
@@ -36,43 +35,49 @@ const Downloaded = () => {
   }, []);
 
   return (
-    <View style={styles.container}>
-      {/* Songs List */}
-      {loading ? (
-        <ActivityIndicator
-          size="large"
-          color="white"
-          style={{ marginTop: 20 }}
-        />
-      ) : downloaded.length > 0 ? (
-        <FlatList
-          data={downloaded}
-          keyExtractor={(item, index) => index}
-          renderItem={({ item, index }) => (
-            <TrackComponent
-              item={item}
-              songs={downloaded}
-              setCurrentQueue={setCurrentQueue}
-              setCurrentSong={setCurrentSong}
-              setIsSongLoading={setIsSongLoading}
-              setSongUrl={setSongUrl}
-              index={index}
-              userInfo={userInfo}
-              onPress={() => {
-                return null;
-              }}
-              playingFrom={"Downloaded"}
-            />
-          )}
-          // contentContainerStyle={{ flexDirection: "column-reverse" }}
-          scrollEnabled={true}
-          alwaysBounceVertical
-          showsVerticalScrollIndicator={false}
-        />
-      ) : (
-        <Text style={styles.noResults}>No Downloaded Songs Found.</Text>
-      )}
-    </View>
+    <ImageBackground
+      source={require("@/assets/images/background.jpg")}
+      blurRadius={10}
+      style={{ flex: 1 }}
+    >
+      <View style={styles.container}>
+        {/* Songs List */}
+        {loading ? (
+          <ActivityIndicator
+            size="large"
+            color="white"
+            style={{ marginTop: 20 }}
+          />
+        ) : downloaded.length > 0 ? (
+          <FlatList
+            data={downloaded}
+            keyExtractor={(item, index) => index}
+            renderItem={({ item, index }) => (
+              <TrackComponent
+                item={item}
+                songs={downloaded}
+                setCurrentQueue={setCurrentQueue}
+                setCurrentSong={setCurrentSong}
+                setIsSongLoading={setIsSongLoading}
+                setSongUrl={setSongUrl}
+                index={index}
+                userInfo={userInfo}
+                onPress={() => {
+                  return null;
+                }}
+                playingFrom={"Downloaded"}
+              />
+            )}
+            // contentContainerStyle={{ flexDirection: "column-reverse" }}
+            scrollEnabled={true}
+            alwaysBounceVertical
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <Text style={styles.noResults}>No Downloaded Songs Found.</Text>
+        )}
+      </View>
+    </ImageBackground>
   );
 };
 
@@ -80,7 +85,7 @@ const Downloaded = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#2F1C6A",
+    backgroundColor: "transparent",
     padding: 20,
   },
   songItem: {
@@ -111,7 +116,7 @@ const styles = StyleSheet.create({
   },
   noResults: {
     textAlign: "center",
-    color: "#888",
+    color: "#000",
     marginTop: 20,
   },
 });

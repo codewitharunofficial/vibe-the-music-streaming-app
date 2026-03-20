@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, StyleSheet, Dimensions } from "react-native";
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  Dimensions,
+  ImageBackground,
+} from "react-native";
 import { retrieveRecentlyPlayed } from "@/constants/apiCalls";
 import { useSong } from "@/context/SongContext";
 import { checkIfLoggedIn, getRecentlyPlayed } from "@/constants/cachedData";
@@ -31,36 +38,42 @@ const SearchScreen = () => {
   }, []);
 
   return (
-    <View style={styles.container}>
-      {/* Songs List */}
-      {loading ? (
-        <Loader isLoading={loading} />
-      ) : songs.length > 0 ? (
-        <FlatList
-          data={songs}
-          keyExtractor={(item, index) => index}
-          renderItem={({ item, index }) => (
-            <TrackComponent
-              item={item}
-              songs={songs}
-              setCurrentQueue={setCurrentQueue}
-              setCurrentSong={setCurrentSong}
-              setIsSongLoading={setIsSongLoading}
-              setSongUrl={setSongUrl}
-              index={index}
-              userInfo={userInfo}
-              playingFrom={'Recents'}
-            />
-          )}
-          contentContainerStyle={{ flexDirection: "column" }}
-          scrollEnabled={true}
-          alwaysBounceVertical
-          showsVerticalScrollIndicator={false}
-        />
-      ) : (
-        <Text style={styles.noResults}>No Recently Played Songs Found.</Text>
-      )}
-    </View>
+    <ImageBackground
+      source={require("@/assets/images/background.jpg")}
+      blurRadius={10}
+      style={{ flex: 1 }}
+    >
+      <View style={styles.container}>
+        {/* Songs List */}
+        {loading ? (
+          <Loader isLoading={loading} />
+        ) : songs.length > 0 ? (
+          <FlatList
+            data={songs}
+            keyExtractor={(item, index) => index}
+            renderItem={({ item, index }) => (
+              <TrackComponent
+                item={item}
+                songs={songs}
+                setCurrentQueue={setCurrentQueue}
+                setCurrentSong={setCurrentSong}
+                setIsSongLoading={setIsSongLoading}
+                setSongUrl={setSongUrl}
+                index={index}
+                userInfo={userInfo}
+                playingFrom={"Recents"}
+              />
+            )}
+            contentContainerStyle={{ flexDirection: "column" }}
+            scrollEnabled={true}
+            alwaysBounceVertical
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <Text style={styles.noResults}>No Recently Played Songs Found.</Text>
+        )}
+      </View>
+    </ImageBackground>
   );
 };
 
@@ -68,7 +81,7 @@ const SearchScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#2F1C6A",
+    backgroundColor: "transparent",
     padding: 20,
   },
   songItem: {
@@ -98,8 +111,11 @@ const styles = StyleSheet.create({
   },
   noResults: {
     textAlign: "center",
-    color: "#888",
+    color: "#000",
     marginTop: 20,
+    justifyContent: 'center',
+    fontWeight: "bold",
+    fontSize: 18
   },
 });
 

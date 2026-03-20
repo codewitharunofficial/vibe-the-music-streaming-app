@@ -27,7 +27,13 @@ export default function RootLayoutNav() {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <Stack screenOptions={{headerStyle: {backgroundColor: '#054465'}, headerTitleStyle: {color: '#fff'}}} >
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: "#054465" },
+          headerTitleStyle: { color: "#fff" },
+          headerTintColor: "#fff",
+        }}
+      >
         <Stack.Screen name="index" options={{ headerTitle: "Playlist" }} />
       </Stack>
     </SafeAreaView>
