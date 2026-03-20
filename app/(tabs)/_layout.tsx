@@ -10,6 +10,7 @@ import { useUser } from "@/context/User";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { COLORS } from "@/utils/colors";
 import { fs, hp, sp, wp } from "@/utils/responsive";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
@@ -23,13 +24,18 @@ function TabBarIcon(props: {
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { height } = Dimensions.get("window");
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
-        tabBarStyle: { height: hp(80), alignItems: "center" },
-        tabBarItemStyle: { padding: sp(15), backgroundColor: "#054465" },
+        tabBarStyle: {
+          height: hp(80) + insets.bottom,
+          alignItems: "center",
+          paddingBottom: insets.bottom,
+        },
+        tabBarItemStyle: { padding: sp(15), backgroundColor: "#054465", },
       }}
     >
       <Tabs.Screen

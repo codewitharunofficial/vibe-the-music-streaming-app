@@ -171,7 +171,7 @@ export default function RootLayoutNav() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       {/* <ThemeProvider value={DarkTheme}> */}
-      <Stack screenOptions={{ navigationBarColor: "#054465" }} >
+      <Stack screenOptions={{ navigationBarColor: "#054465", navigationBarHidden: true }} >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="recents" options={{ headerShown: false }} />
 
@@ -179,16 +179,16 @@ export default function RootLayoutNav() {
         <Stack.Screen name="album" options={{ headerShown: false, headerStyle: { backgroundColor: "#054465" } }} />
         <Stack.Screen
           name="favourites"
-          options={{ headerShown: true, headerTitle: "Favourite Songs", headerTitleStyle: { color: headerColor } }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: "#054465" }, headerTintColor: "#fff", headerTitle: "Favourite Songs", headerTitleStyle: { color: "#fff" } }}
         />
         <Stack.Screen
           name="soon"
-          options={{ headerShown: true, headerTitle: "Not Available", headerTitleStyle: { color: headerColor } }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: "#054465" }, headerTintColor: "#fff", headerTitle: "Not Available", headerTitleStyle: { color: headerColor } }}
         />
         <Stack.Screen
           name="playlists"
           options={{
-            headerShown: true, headerTitle: "My Playlists", headerTitleStyle: { color: "#fff", }, headerRight: () => <TouchableOpacity onPress={() => handleRefresh()} >
+            headerShown: true, headerStyle: { backgroundColor: "#054465" }, headerTintColor: "#fff", headerTitle: "My Playlists", headerTitleStyle: { color: "#fff", }, headerRight: () => <TouchableOpacity onPress={() => handleRefresh()} >
               <EvilIcons name="refresh" size={30} color={'white'} />
             </TouchableOpacity>
           }}
@@ -196,7 +196,10 @@ export default function RootLayoutNav() {
         />
         <Stack.Screen
           name="user-playlist"
-          options={{ headerShown: true, headerTitle: `${playlistName}`, headerTitleStyle: { color: headerColor }, headerStyle: { backgroundColor: "#054465" } }}
+          options={{
+            headerShown: true, headerTitle: `${playlistName}`,
+            headerStyle: { backgroundColor: "#054465" }, headerTintColor: "#fff", headerTitleStyle: { color: "#fff" }, headerStyle: { backgroundColor: "#054465" }
+          }}
         />
         <Stack.Screen
           name="updates"
@@ -204,7 +207,7 @@ export default function RootLayoutNav() {
         />
         <Stack.Screen
           name="downloaded"
-          options={{ headerShown: true, headerTitle: `Downloaded`, headerTitleStyle: { color: headerColor } }}
+          options={{ headerShown: true, headerTitle: `Downloaded`, headerTitleStyle: { color: "#fff" }, headerStyle: { backgroundColor: "#054465" }, headerTintColor: "#fff", }}
         />
         <Stack.Screen
           name="local"
