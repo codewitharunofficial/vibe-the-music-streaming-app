@@ -1133,7 +1133,7 @@ const MiniPlayer = ({
       onPress={() => onOpen(true)}
       style={[
         styles.miniPlayerContainer,
-        { bottom: route === "(tabs)" ? hp(80) : hp(80) },
+        { bottom: route === "(tabs)" ? hp(126) : hp(150) },
       ]}
     >
       <Image
