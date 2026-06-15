@@ -171,10 +171,9 @@ export default function RootLayoutNav() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       {/* <ThemeProvider value={DarkTheme}> */}
-      <Stack screenOptions={{ navigationBarColor: "#054465", navigationBarHidden: true }} >
+      <Stack screenOptions={{ navigationBarColor: "transparent", navigationBarHidden: false }} >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="recents" options={{ headerShown: false }} />
-
         <Stack.Screen name="playlist" options={{ headerShown: false, headerStyle: { backgroundColor: "#054465" }, headerTintColor: "#fff" }} />
         <Stack.Screen name="album" options={{ headerShown: false, headerStyle: { backgroundColor: "#054465" } }} />
         <Stack.Screen
@@ -203,7 +202,7 @@ export default function RootLayoutNav() {
         />
         <Stack.Screen
           name="updates"
-          options={{ headerShown: true, headerTitle: `App-Update`, headerTitleStyle: { color: headerColor } }}
+          options={{ headerShown: true, headerTitle: `App-Update`, headerTitleStyle: { color: headerColor }, headerStyle: { backgroundColor: "#457B9D" } }}
         />
         <Stack.Screen
           name="downloaded"

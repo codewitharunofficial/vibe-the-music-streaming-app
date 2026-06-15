@@ -1404,6 +1404,7 @@ const TrackComponent = ({
       delayLongPress={100}
       onPress={play}
       style={styles.trackItem}
+      // key={index}
     >
       <View style={{ flexDirection: "row", flex: 0.8 }}>
         <Image

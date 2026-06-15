@@ -26,6 +26,8 @@ const PlaylistScreen = () => {
   const { currentQueue, setCurrentQueue } = usePlayer();
   const { userInfo, setUserInfo } = useUser();
 
+  const ITEM_HEIGHT = 80;
+
   return (
     <ImageBackground
       source={require("@/assets/images/background.jpg")}
@@ -38,9 +40,10 @@ const PlaylistScreen = () => {
           <Image
             source={{
               uri:
-                playlist?.songs[0]?.thumbnail ||
+                playlist?.results[0]?.thumbnail ||
                 playlist?.playlistCover ||
-                playlist?.poster,
+                playlist?.poster ||
+                playlist?.songs[0]?.thumbnail,
             }}
             style={styles.coverImage}
           />
@@ -56,18 +59,23 @@ const PlaylistScreen = () => {
                 moment(playlist?.createdAt).toDate().toLocaleDateString("IN")}
             </Text>
             <Text style={styles.description}>
-              {playlist?.playlistDescription || playlist.description}
+              {playlist?.playlistDescription ||
+                playlist?.description ||
+                "No Description"}
             </Text>
           </View>
         </View>
 
         <FlatList
-          data={playlist.results || playlist?.songs}
-          // keyExtractor={(item) => item?.videoId.toString() || item?.id.toString()}
+          data={playlist?.results || playlist?.songs}
+          // keyExtractor={(item, index) => index?.toString()}
+          keyExtractor={(item) =>
+            item?.videoId.toString() || item?.id.toString()
+          }
           renderItem={({ item, index }) => (
             <TrackComponent
               item={item}
-              songs={playlist.results || playlist?.songs}
+              songs={playlist?.results || playlist?.songs}
               setCurrentQueue={setCurrentQueue}
               setCurrentSong={setCurrentSong}
               setIsSongLoading={setIsSongLoading}
@@ -81,6 +89,11 @@ const PlaylistScreen = () => {
           scrollEnabled={true}
           alwaysBounceVertical
           showsVerticalScrollIndicator={false}
+          getItemLayout={(data, index) => ({
+            length: ITEM_HEIGHT,
+            offset: ITEM_HEIGHT * index,
+            index,
+          })}
         />
       </View>
     </ImageBackground>
@@ -113,15 +126,15 @@ const styles = StyleSheet.create({
   },
   author: {
     fontSize: 14,
-    color: "#bbb",
+    color: "#000",
   },
   release: {
     fontSize: 14,
-    color: "#bbb",
+    color: "#000",
   },
   description: {
     fontSize: 12,
-    color: "#ccc",
+    color: "#000",
     marginTop: 5,
   },
   songItem: {

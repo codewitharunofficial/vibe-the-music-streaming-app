@@ -63,6 +63,8 @@ export const getPlaylistSongs = async (id) => {
   const results =
     JSON.parse(await AsyncStorage.getItem(`playlist_${id}`)) || [];
 
+    // console.log(id);
+
   if (results?.length > 0) {
     return results;
   } else {
@@ -80,7 +82,7 @@ export const getPlaylistSongs = async (id) => {
 
     try {
       const { data } = await axios.request(options);
-      // console.log(data);
+      console.log(data);
       await AsyncStorage.setItem(`playlist_${id}`, JSON.stringify(data));
       return data;
     } catch (error) {

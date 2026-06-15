@@ -48,7 +48,7 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
     const checkIfFavourite = async () => {
       const fav = await getFavourites();
       const found = fav?.some(
-        (item) => (item?.id || item?.videoId) === (song?.id || song?.videoId)
+        (item) => (item?.id || item?.videoId) === (song?.id || song?.videoId),
       );
       setIsFavourite(!!found);
     };
@@ -77,7 +77,7 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
     // Refresh favourite status after like/unlike
     const fav = await getFavourites();
     const found = fav?.some(
-      (item) => (item?.id || item?.videoId) === (song?.id || song?.videoId)
+      (item) => (item?.id || item?.videoId) === (song?.id || song?.videoId),
     );
     setIsFavourite(!!found);
   };
@@ -103,7 +103,7 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
               const queue = await TrackPlayer.getQueue();
 
               const indexToMoveFrom = queue.findIndex(
-                (s) => s.id === song.videoId
+                (s) => s.id === song.videoId,
               );
 
               console.log("Move From: ", indexToMoveFrom);
@@ -112,12 +112,12 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
                 console.log(
                   `Moving Track from ${indexToMoveFrom} to ${
                     currentTrackIndex + 1
-                  }`
+                  }`,
                 );
                 const arr = moveSong(
                   currentQueue,
                   indexToMoveFrom,
-                  currentTrackIndex + 1
+                  currentTrackIndex + 1,
                 );
                 setCurrentQueue(arr);
                 onClose();
@@ -132,7 +132,7 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
 
           {currentQueue.find(
             (track) =>
-              (track.id || track.videoId) === (song?.id || song?.videoId)
+              (track.id || track.videoId) === (song?.id || song?.videoId),
           ) ? (
             <TouchableOpacity
               style={styles.optionButton}
@@ -140,7 +140,7 @@ const TrackOptionModal = ({ isVisible, onClose, song, moveSong, from }) => {
                 const queue = await TrackPlayer.getQueue();
 
                 const indexToremove = queue.findIndex(
-                  (s) => s.id === song.videoId
+                  (s) => s.id === song.videoId,
                 );
                 await TrackPlayer.remove(indexToremove);
                 handleRemove(indexToremove);

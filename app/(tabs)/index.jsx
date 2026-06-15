@@ -200,10 +200,11 @@ export default function Home() {
         setIsSongLoading(false);
         ToastAndroid.show("Error playing song", ToastAndroid.SHORT);
       }
-    } else if (section === "playlist") {
+    } else if (section === "playlist" || section?.includes("playlist")) {
       console.log("Getting Playlist...>", song.browseId);
       setIsPlaylistLoading(true);
-      const results = await getPlaylistSongs(song.browseId);
+      const results = await getPlaylistSongs(song?.browseId);
+      // console.log("Results: ", results);
       if (results) {
         setPlaylist(results);
         setIsPlaylistLoading(false);
@@ -238,13 +239,13 @@ export default function Home() {
 
   return (
     <ImageBackground
-      source={ require("@/assets/images/background.jpg")}
+      source={require("@/assets/images/background.jpg")}
       blurRadius={10}
-      style={{flex: 1}}
+      style={{ flex: 1 }}
     >
-    <View
-      style={[styles.container, { paddingBottom: currentSong ? hp(75) : 0, }]}
-    >
+      <View
+        style={[styles.container, { paddingBottom: currentSong ? hp(75) : 0 }]}
+      >
         {/* Quick Access */}
         <View style={styles.quickAccessContainer}>
           <QuickAccessButton
@@ -275,8 +276,8 @@ export default function Home() {
         )}
 
         <Loader isLoading={isPlaylistLoading || albumLoading} />
-    </View>
-      </ImageBackground>
+      </View>
+    </ImageBackground>
   );
 }
 
