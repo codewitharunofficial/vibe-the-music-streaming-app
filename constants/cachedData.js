@@ -3,7 +3,7 @@ import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system";
 import { playASongs } from "./player";
 import { handleLiked } from "./liked";
-import { NativeModules } from "react-native";
+import { Alert, NativeModules } from "react-native";
 import { showToast } from "./utils";
 
 export const saveToRecentlyPlayed = async (song) => {

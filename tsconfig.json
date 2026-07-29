@@ -3,10 +3,10 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": [
-        "./*"
-      ]
-    }
+      "@/*": ["./*"]
+    },
+    "types": ["node", "jest", "express"],
+    "ignoreDeprecations": "6.0"
   },
   "include": [
     "**/*.ts",

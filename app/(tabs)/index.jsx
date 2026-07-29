@@ -93,7 +93,6 @@ export default function Home() {
   useEffect(() => {
     const handleDeepLink = async ({ url }) => {
       let { queryParams } = Linking.parse(url);
-
       if (queryParams?.id) {
         setIsSongLoading(true);
         setPlayingFrom("Share");

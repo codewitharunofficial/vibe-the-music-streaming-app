@@ -212,6 +212,10 @@ export default function RootLayoutNav() {
           name="local"
           options={{ headerShown: false, headerTitle: `Local-Songs`, headerTitleStyle: { color: "#fff" }, headerStyle: { backgroundColor: "#054465" } }}
         />
+         <Stack.Screen
+          name="about"
+          options={{ headerShown: false, headerTitle: `About-Vibe`, headerTitleStyle: { color: "#fff" }, headerStyle: { backgroundColor: "#054465" } }}
+        />
       </Stack>
       <ModalPortal />
 
