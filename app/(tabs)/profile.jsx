@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   Image,
   Animated,
   Alert,
-  useColorScheme,
   Dimensions,
   ImageBackground,
 } from "react-native";
@@ -23,17 +22,45 @@ import { mergeRecents, saveToFavourites } from "@/constants/cachedData";
 import { useSong } from "@/context/SongContext";
 import Loader from "@/components/Loader";
 import { reloadHome } from "@/constants/apiCalls";
-import { COLORS } from "@/utils/colors";
 
 // Complete any pending browser session
 WebBrowser.maybeCompleteAuthSession();
 
+const APP_ICON = require("@/assets/images/icon.png");
+
+// Design tokens (same palette as the rest of the app)
+const UI = {
+  surface: "#0B3047",
+  accent: "#FF9F1C",
+  glass: "rgba(255,255,255,0.10)",
+  hairline: "rgba(255,255,255,0.10)",
+  textHi: "#FFFFFF",
+  textMid: "rgba(255,255,255,0.72)",
+  textLow: "rgba(255,255,255,0.45)",
+  scrim: "rgba(4,24,35,0.55)",
+  danger: "#FF6B81",
+};
+
+// One row of the profile menu (presentation only)
+const NavRow = ({ icon, color, label, onPress, last }) => (
+  <TouchableOpacity
+    activeOpacity={0.7}
+    style={[styles.navButton, last && styles.navButtonLast]}
+    onPress={onPress}
+  >
+    <View style={[styles.navIconWrap, { backgroundColor: `${color}26` }]}>
+      <MaterialIcons name={icon} size={22} color={color} />
+    </View>
+    <Text style={styles.navText}>{label}</Text>
+    <MaterialIcons name="chevron-right" size={22} color={UI.textLow} />
+  </TouchableOpacity>
+);
+
 const UserProfile = () => {
   const { userInfo, setUserInfo } = useUser();
   const [fadeAnim] = useState(new Animated.Value(0));
-  const [authMethod, setAuthMethod] = useState("");
-  const colorScheme = useColorScheme();
-  const isDarkMode = colorScheme === "dark";
+  // A ref (not state) so the value is always current when Google responds
+  const authMethodRef = useRef("");
   const { currentSong } = useSong();
   const [isLoading, setIsLoading] = useState(false);
   const { height } = Dimensions.get("window");
@@ -49,13 +76,21 @@ const UserProfile = () => {
   // Handle Google Auth response
   useEffect(() => {
     if (response?.type === "success") {
-      fetchUserInfo(response.authentication.accessToken);
+      const accessToken = response.authentication?.accessToken;
+      if (accessToken) {
+        fetchUserInfo(accessToken);
+      } else {
+        Alert.alert("Error", "Google did not return an access token.");
+      }
+    } else if (response?.type === "error") {
+      Alert.alert("Error", "Google sign-in failed. Please try again.");
     }
   }, [response]);
 
   // Fetch user info from Google API
   const fetchUserInfo = async (accessToken) => {
     try {
+      setIsLoading(true);
       const response = await fetch(
         "https://www.googleapis.com/userinfo/v2/me",
         {
@@ -66,13 +101,14 @@ const UserProfile = () => {
 
       if (userData.error) throw new Error(userData.error.message);
 
-      if (authMethod === "Login") {
-        await login(userData);
-      } else if (authMethod === "SignUp") {
+      if (authMethodRef.current === "SignUp") {
         await signUp(userData);
+      } else {
+        await login(userData);
       }
     } catch (error) {
       console.error("Error fetching user info:", error);
+      setIsLoading(false);
       Alert.alert("Error", "Failed to fetch user info. Please try again.");
     }
   };
@@ -91,7 +127,7 @@ const UserProfile = () => {
       if (data.success) {
         setUserInfo(data.user);
         await AsyncStorage.setItem("userInfo", JSON.stringify(data.user));
-        await saveToFavourites(data.user?.favourites);
+        await saveToFavourites(data.user?.favourites || []);
         await mergeRecents(data.user.recently_played);
         await reloadHome(setIsLoading, data.user.email || " ");
         setIsLoading(false);
@@ -122,7 +158,7 @@ const UserProfile = () => {
       if (data.success) {
         setUserInfo(data.user);
         await AsyncStorage.setItem("userInfo", JSON.stringify(data.user));
-        await saveToFavourites(data.user?.favourites);
+        await saveToFavourites(data.user?.favourites || []);
         setIsLoading(false);
       } else {
         setIsLoading(false);
@@ -135,18 +171,32 @@ const UserProfile = () => {
     }
   };
 
-  // Handle Sign-Out
-  const handleSignOut = async () => {
-    try {
-      // await AsyncStorage.removeItem("userInfo");
-      // await AsyncStorage.removeItem("recents");
-      await AsyncStorage.multiRemove(["userInfo", "recents", "favourites"]);
-      setUserInfo(null);
-      Alert.alert("Success", "Signed out successfully!");
-    } catch (error) {
-      console.error("Sign-Out Error:", error);
-      Alert.alert("Error", "Failed to sign out.");
-    }
+  // Sign-Out (asks first, then clears everything tied to the account,
+  // including the cached personalised home feed and playlists)
+  const handleSignOut = () => {
+    Alert.alert("Sign out", "Do you want to sign out of Vibe?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await AsyncStorage.multiRemove([
+              "userInfo",
+              "recents",
+              "favourites",
+              "home",
+              "home_updated_at",
+              "user-playlists",
+            ]);
+            setUserInfo(null);
+          } catch (error) {
+            console.error("Sign-Out Error:", error);
+            Alert.alert("Error", "Failed to sign out.");
+          }
+        },
+      },
+    ]);
   };
 
   useEffect(() => {
@@ -163,6 +213,8 @@ const UserProfile = () => {
       blurRadius={10}
       style={{ flex: 1 }}
     >
+      {/* Dark wash so the cards read well on any background */}
+      <View pointerEvents="none" style={styles.scrim} />
       <View
         style={[
           styles.container,
@@ -173,12 +225,16 @@ const UserProfile = () => {
           <Animated.View
             style={[styles.profileContainer, { opacity: fadeAnim }]}
           >
-            <Image
-              source={{
-                uri: userInfo.profilePic || "https://via.placeholder.com/150",
-              }}
-              style={styles.profilePhoto}
-            />
+            <View style={styles.avatarRing}>
+              <Image
+                source={
+                  userInfo.profilePic
+                    ? { uri: userInfo.profilePic }
+                    : APP_ICON
+                }
+                style={styles.profilePhoto}
+              />
+            </View>
             <Text style={styles.userName}>{userInfo.name || "User"}</Text>
             <Text style={styles.userEmail}>
               {userInfo?.email || "email@example.com"}
@@ -186,57 +242,49 @@ const UserProfile = () => {
 
             {/* router Buttons */}
             <View style={styles.navButtons}>
-              <TouchableOpacity
-                style={styles.navButton}
+              <NavRow
+                icon="favorite"
+                color="#FF4D67"
+                label="Favourites"
                 onPress={() => router.navigate({ pathname: "/favourites" })}
-              >
-                <MaterialIcons name="favorite" size={24} color="#FF4D67" />
-                <Text style={styles.navText}>Favourites</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.navButton}
+              />
+              <NavRow
+                icon="history"
+                color="#4DA6FF"
+                label="Recently Played"
                 onPress={() => router.navigate({ pathname: "/recents/" })}
-              >
-                <MaterialIcons name="history" size={24} color="#4DA6FF" />
-                <Text style={styles.navText}>Recently Played</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.navButton}
+              />
+              <NavRow
+                icon="play-circle-fill"
+                color="#FFC14D"
+                label="Most Played"
                 onPress={() => router.navigate({ pathname: "/soon" })}
-              >
-                <MaterialIcons
-                  name="play-circle-fill"
-                  size={24}
-                  color="#FFC14D"
-                />
-                <Text style={styles.navText}>Most Played</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.navButton}
+              />
+              <NavRow
+                icon="playlist-play"
+                color="#E600E6"
+                label="Your Playlists"
                 onPress={() => router.navigate({ pathname: "/playlists" })}
-              >
-                <MaterialIcons name="playlist-play" size={24} color="#E600E6" />
-                <Text style={styles.navText}>Your Playlists</Text>
-              </TouchableOpacity>
+                last
+              />
             </View>
 
             {/* Sign Out Button */}
             <TouchableOpacity
+              activeOpacity={0.8}
               onPress={handleSignOut}
               style={styles.signOutButton}
             >
+              <MaterialIcons name="logout" size={20} color={UI.danger} />
               <Text style={styles.signOutText}>Sign Out</Text>
             </TouchableOpacity>
           </Animated.View>
         ) : isLoading ? (
           <Loader isLoading={isLoading} />
         ) : (
-          <Animated.View style={styles.authCard}>
+          <Animated.View style={[styles.authCard, { opacity: fadeAnim }]}>
             <Image
-              source={require("@/assets/images/icon.png")}
+              source={APP_ICON}
               style={styles.logo}
               resizeMode="cover"
             />
@@ -245,24 +293,34 @@ const UserProfile = () => {
               Stream your favorite music anytime, anywhere.
             </Text>
             <TouchableOpacity
+              activeOpacity={0.85}
+              disabled={!request}
               onPress={() => {
-                setAuthMethod("Login");
+                authMethodRef.current = "Login";
                 promptAsync();
               }}
-              style={styles.googleButton}
+              style={[styles.googleButton, !request && styles.buttonDisabled]}
             >
-              <AntDesign name="google" size={24} color="#fff" />
+              <AntDesign name="google" size={22} color="#DB4437" />
               <Text style={styles.buttonText}>Sign In with Google</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              activeOpacity={0.85}
+              disabled={!request}
               onPress={() => {
-                setAuthMethod("SignUp");
+                authMethodRef.current = "SignUp";
                 promptAsync();
               }}
-              style={styles.googleButton}
+              style={[
+                styles.googleButton,
+                styles.googleButtonSecondary,
+                !request && styles.buttonDisabled,
+              ]}
             >
-              <AntDesign name="google" size={24} color="#fff" />
-              <Text style={styles.buttonText}>Sign Up with Google</Text>
+              <AntDesign name="google" size={22} color={UI.textHi} />
+              <Text style={[styles.buttonText, styles.buttonTextSecondary]}>
+                Sign Up with Google
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         )}
@@ -272,6 +330,11 @@ const UserProfile = () => {
 };
 
 const styles = StyleSheet.create({
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: UI.scrim,
+  },
+
   container: {
     flex: 1,
     backgroundColor: "transparent",
@@ -279,105 +342,174 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
+  /* ----- Signed in ----- */
   profileContainer: {
     alignItems: "center",
-    backgroundColor: "#1C1C1C",
-    borderRadius: 15,
-    padding: 30,
+    backgroundColor: UI.surface,
+    borderRadius: 28,
+    paddingVertical: 28,
+    paddingHorizontal: 22,
     width: "90%",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: UI.hairline,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    elevation: 10,
+  },
+
+  avatarRing: {
+    padding: 4,
+    borderRadius: 70,
+    borderWidth: 2.5,
+    borderColor: UI.accent,
+    marginBottom: 14,
   },
 
   profilePhoto: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 1,
-    borderColor: "#1C1C1C",
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    backgroundColor: "#124562",
   },
 
   userName: {
-    fontSize: 26,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 5,
-    marginTop: 5,
+    fontSize: 24,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+    color: UI.textHi,
+    marginBottom: 4,
   },
 
   userEmail: {
-    fontSize: 16,
-    color: "royalblue",
-    marginBottom: 20,
-    textDecorationLine: "underline",
-    textDecorationStyle: "dashed",
-    textDecorationColor: "white",
+    fontSize: 14,
+    color: UI.textMid,
+    marginBottom: 22,
   },
 
-  navButtons: { width: "100%", marginTop: 10 },
+  navButtons: {
+    width: "100%",
+    backgroundColor: UI.glass,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+  },
 
   navButton: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: UI.hairline,
   },
 
-  navText: { color: "#fff", fontSize: 16, marginLeft: 10 },
+  navButtonLast: {
+    borderBottomWidth: 0,
+  },
+
+  navIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  navText: {
+    flex: 1,
+    color: UI.textHi,
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 14,
+  },
 
   signOutButton: {
-    backgroundColor: "#E50914",
-    padding: 12,
-    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    width: "100%",
+    paddingVertical: 13,
+    borderRadius: 14,
     marginTop: 20,
-    color: "#fff",
+    borderWidth: 1,
+    borderColor: "rgba(255,107,129,0.55)",
+    backgroundColor: "rgba(255,107,129,0.12)",
   },
+
   signOutText: {
-    color: "#fff",
+    color: UI.danger,
+    fontSize: 15,
+    fontWeight: "700",
   },
+
+  /* ----- Signed out ----- */
   authCard: {
-    backgroundColor: "#1C1C1C",
-    borderRadius: 20,
-    padding: 30,
+    backgroundColor: UI.surface,
+    borderRadius: 28,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
     width: "90%",
     alignItems: "center",
-    elevation: 5,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: UI.hairline,
+    elevation: 10,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
   },
 
   logo: {
-    width: 80,
-    height: 80,
+    width: 88,
+    height: 88,
     marginBottom: 20,
-    borderRadius: 50,
-    objectFit: "cover",
+    borderRadius: 24,
   },
 
-  title: { fontSize: 26, fontWeight: "bold", color: "#fff", marginBottom: 5 },
+  title: {
+    fontSize: 26,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+    color: UI.textHi,
+    marginBottom: 6,
+  },
 
   subtitle: {
     fontSize: 14,
-    color: "#bbb",
+    lineHeight: 20,
+    color: UI.textMid,
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 26,
   },
 
   googleButton: {
     width: "100%",
-    backgroundColor: "#4285F4",
-    paddingVertical: 12,
-    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
     gap: 10,
     elevation: 3,
-    marginBottom: 10,
+    marginBottom: 12,
   },
 
-  buttonContent: { flexDirection: "row", alignItems: "center", gap: 10 },
+  googleButtonSecondary: {
+    backgroundColor: UI.glass,
+    borderWidth: 1,
+    borderColor: UI.hairline,
+    elevation: 0,
+  },
 
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+
+  buttonText: { color: "#1F1F1F", fontSize: 16, fontWeight: "700" },
+
+  buttonTextSecondary: { color: UI.textHi },
 });
 
 export default UserProfile;

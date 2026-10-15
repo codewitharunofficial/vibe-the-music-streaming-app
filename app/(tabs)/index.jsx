@@ -25,6 +25,7 @@ import { usePlaylist } from "@/context/Playlist";
 import TrackPlayer from "react-native-track-player";
 import { useUser } from "@/context/User";
 import * as Linking from "expo-linking";
+import { getItemType, ITEM_TYPES, withVideoId } from "@/constants/itemType";
 
 const { width, height } = Dimensions.get("window");
 
@@ -33,10 +34,11 @@ const COLORS = {
   background: "#121212",
   surface: "#1E1E1E",
   surfaceAlt: "#2A2A2A",
-  primary: "#1DB954",
+  primary: "#FF9F1C", // brand orange (loader)
   textPrimary: "#FFFFFF",
   textSecondary: "#CFCFCF",
   textMuted: "#9A9A9A",
+  scrim: "rgba(4,24,35,0.55)", // dark wash over the background image
 };
 
 /* ---------- RESPONSIVE ---------- */
@@ -90,46 +92,46 @@ export default function Home() {
   }, []);
 
   /* ---------- DEEP LINK HANDLING (UNCHANGED) ---------- */
-  useEffect(() => {
-    const handleDeepLink = async ({ url }) => {
-      let { queryParams } = Linking.parse(url);
-      if (queryParams?.id) {
-        setIsSongLoading(true);
-        setPlayingFrom("Share");
-        try {
-          const song = {
-            videoId: queryParams.id,
-            title: decodeURIComponent(queryParams.title),
-            author: decodeURIComponent(queryParams.author),
-            thumbnail: decodeURIComponent(queryParams.thumbnail),
-          };
+  // useEffect(() => {
+  //   const handleDeepLink = async ({ url }) => {
+  //     let { queryParams } = Linking.parse(url);
+  //     if (queryParams?.id) {
+  //       setIsSongLoading(true);
+  //       setPlayingFrom("Share");
+  //       try {
+  //         const song = {
+  //           videoId: queryParams.id,
+  //           title: decodeURIComponent(queryParams.title),
+  //           author: decodeURIComponent(queryParams.author),
+  //           thumbnail: decodeURIComponent(queryParams.thumbnail),
+  //         };
 
-          await saveToRecentlyPlayed(song);
-          if (userInfo) await handleRecentlyPlayed(userInfo.email, song);
+  //         await saveToRecentlyPlayed(song);
+  //         if (userInfo) await handleRecentlyPlayed(userInfo.email, song);
 
-          setCurrentSong(song);
+  //         setCurrentSong(song);
 
-          const track = {
-            id: song.videoId,
-            url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${song.videoId}&email=${userInfo?.email || ""}`,
-            title: song.title,
-            artist: song.author,
-            artwork: song.thumbnail,
-          };
+  //         const track = {
+  //           id: song.videoId,
+  //           url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${song.videoId}&email=${userInfo?.email || ""}`,
+  //           title: song.title,
+  //           artist: song.author,
+  //           artwork: song.thumbnail,
+  //         };
 
-          await TrackPlayer.reset();
-          await TrackPlayer.add(track);
-          await TrackPlayer.play();
-          setOpen(true);
-        } finally {
-          setIsSongLoading(false);
-        }
-      }
-    };
+  //         await TrackPlayer.reset();
+  //         await TrackPlayer.add(track);
+  //         await TrackPlayer.play();
+  //         setOpen(true);
+  //       } finally {
+  //         setIsSongLoading(false);
+  //       }
+  //     }
+  //   };
 
-    const subscription = Linking.addEventListener("url", handleDeepLink);
-    return () => subscription.remove();
-  }, []);
+  //   const subscription = Linking.addEventListener("url", handleDeepLink);
+  //   return () => subscription.remove();
+  // }, []);
 
   /* ---------- UI HANDLERS (UNCHANGED) ---------- */
   const routeToRecents = async () => {
@@ -143,20 +145,24 @@ export default function Home() {
   };
 
   const handlePress = async (section, song, index) => {
-    console.log("Section: ", section);
-    if (section === "quick_picks") {
+    // Decide what to do from the item itself, not from the section's name
+    // (section names change every time the home feed is fetched).
+    const type = getItemType(song);
+    console.log("Pressed item:", type, "| section:", section);
+
+    if (type === ITEM_TYPES.SONG) {
       try {
+        const current = withVideoId(song);
         await TrackPlayer.reset();
         // setCurrentSong(song);
         setPlayingFrom("Home");
         const track = {
-          id: song.videoId,
-          url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
-            song.videoId
-          }&email=${userInfo?.email || ""}`,
-          title: song.title || "Unknown Title",
-          artist: song.author || "Unknown Artist",
-          artwork: song.thumbnail?.url || song.thumbnail,
+          id: current.videoId,
+          url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${current.videoId
+            }&email=${userInfo?.email || ""}`,
+          title: current.title || "Unknown Title",
+          artist: current.author || "Unknown Artist",
+          artwork: current.thumbnail?.url || current.thumbnail,
         };
         await TrackPlayer.add(track);
         await TrackPlayer.skip(0);
@@ -167,17 +173,21 @@ export default function Home() {
         ToastAndroid.show("Song Is Added To The Queue", ToastAndroid.SHORT);
         setIsPlaying(true);
 
-        const newQueue = home?.quick_picks.slice(
-          index,
-          home?.quick_picks.length,
-        );
+        // Queue = the songs from the pressed one to the end of its section
+        const sectionList = Array.isArray(home?.[section])
+          ? home[section]
+          : [song];
+        const startIndex = Array.isArray(home?.[section]) ? index : 0;
+        const newQueue = sectionList
+          .slice(startIndex)
+          .filter((s) => getItemType(s) === ITEM_TYPES.SONG)
+          .map(withVideoId);
         setCurrentQueue(newQueue);
 
         const tracks = newQueue.map((s) => ({
           id: s.videoId,
-          url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
-            s.videoId
-          }&email=${userInfo?.email || ""}`,
+          url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${s.videoId
+            }&email=${userInfo?.email || ""}`,
           title: s.title || "Unknown Title",
           artist: s.author || "Unknown Artist",
           artwork:
@@ -187,9 +197,9 @@ export default function Home() {
         }));
 
         await TrackPlayer.setQueue(tracks);
-        await saveToRecentlyPlayed(song);
+        await saveToRecentlyPlayed(current);
         if (userInfo) {
-          await handleRecentlyPlayed(userInfo?.email, song);
+          await handleRecentlyPlayed(userInfo?.email, current);
         }
 
         setIsSongLoading(false);
@@ -199,36 +209,49 @@ export default function Home() {
         setIsSongLoading(false);
         ToastAndroid.show("Error playing song", ToastAndroid.SHORT);
       }
-    } else if (section === "playlist" || section?.includes("playlist")) {
-      console.log("Getting Playlist...>", song.browseId);
+    } else if (type === ITEM_TYPES.CUSTOM_PLAYLIST) {
+      // The item already is the playlist, so there is nothing to look up
+      setPlaylist(song);
+      router.push({ pathname: "/playlist/" });
+    } else if (type === ITEM_TYPES.PLAYLIST) {
+      const id = song.browseId ?? song.playlistId;
+      console.log("Getting Playlist...>", id);
       setIsPlaylistLoading(true);
-      const results = await getPlaylistSongs(song?.browseId);
-      // console.log("Results: ", results);
-      if (results) {
-        setPlaylist(results);
+      try {
+        const results = await getPlaylistSongs(id);
+        if (results) {
+          setPlaylist(results);
+          router.push({ pathname: "/playlist/" });
+        } else {
+          ToastAndroid.show("Couldn't load this playlist", ToastAndroid.SHORT);
+        }
+      } catch (error) {
+        console.error("Error loading playlist:", error);
+        ToastAndroid.show("Couldn't load this playlist", ToastAndroid.SHORT);
+      } finally {
         setIsPlaylistLoading(false);
-        router.push({
-          pathname: "/playlist/",
-        });
       }
-    } else if (section === "custom_playlists") {
-      setIsPlaylistLoading(true);
-      const savedHome = JSON.parse(await AsyncStorage.getItem("home"));
-      if (savedHome?.custom_playlists) {
-        console.log(savedHome.custom_playlists);
-        setPlaylist(savedHome?.custom_playlists[index]);
-        router.push({ pathname: "/playlist/" });
-        setIsPlaylistLoading(false);
+    } else if (type === ITEM_TYPES.ALBUM) {
+      const id = song.browseId ?? song.albumId;
+      console.log("Getting Album.....>", id);
+      setIsAlbumLoading(true);
+      try {
+        const results = await getAlbumSongs(id);
+        if (results) {
+          setAlbum(results);
+          router.push({ pathname: "/album" });
+        } else {
+          ToastAndroid.show("Couldn't load this album", ToastAndroid.SHORT);
+        }
+      } catch (error) {
+        console.error("Error loading album:", error);
+        ToastAndroid.show("Couldn't load this album", ToastAndroid.SHORT);
+      } finally {
+        setIsAlbumLoading(false);
       }
     } else {
-      console.log("Getting Album.....>", song.browseId);
-      setIsAlbumLoading(true);
-      const results = await getAlbumSongs(song.browseId);
-      if (results) {
-        setIsAlbumLoading(false);
-        setAlbum(results);
-        router.push({ pathname: "/album" });
-      }
+      console.warn("Unknown item type, can't open:", song);
+      ToastAndroid.show("This item can't be opened", ToastAndroid.SHORT);
     }
   };
 
@@ -242,6 +265,8 @@ export default function Home() {
       blurRadius={10}
       style={{ flex: 1 }}
     >
+      {/* Dark wash so section titles and cards read well on any background */}
+      <View pointerEvents="none" style={styles.scrim} />
       <View
         style={[styles.container, { paddingBottom: currentSong ? hp(75) : 0 }]}
       >
@@ -282,6 +307,11 @@ export default function Home() {
 
 /* ---------- STYLES ---------- */
 const styles = StyleSheet.create({
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: COLORS.scrim,
+  },
+
   container: {
     flex: 1,
     backgroundColor: "transparent",
@@ -291,11 +321,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: sp(10),
-    padding: sp(12),
+    paddingHorizontal: sp(14),
+    paddingTop: sp(8),
+    paddingBottom: sp(4),
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "transparent",
-    borderBottomLeftRadius: sp(16),
-    borderBottomRightRadius: sp(16),
   },
 });

@@ -27,6 +27,10 @@ import {
 import { BottomModal, ModalContent, SlideAnimation } from "react-native-modals";
 // import { Audio } from "expo-av";
 import Slider from "@react-native-community/slider";
+import DraggableFlatList, {
+  ScaleDecorator,
+} from "react-native-draggable-flatlist";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSong } from "@/context/SongContext";
 import { usePlayer } from "@/context/PlayerContext";
 import { shareSong } from "@/constants/player";
@@ -51,8 +55,35 @@ import {
 import { handleRecentlyPlayed } from "@/constants/apiCalls";
 import axios from "axios";
 import { COLORS } from "@/utils/colors";
+import { getSectionType, ITEM_TYPES } from "@/constants/itemType";
 
 const { width, height } = Dimensions.get("window");
+
+// Queue row layout (fixed height so scrolling and dragging stay accurate)
+const QUEUE_ROW_HEIGHT = 64;
+const QUEUE_ROW_GAP = 4;
+const QUEUE_TEXT_WIDTH = width - 215; // room for artwork, drag handle and menu
+
+// ---------------------------------------------------------------------------
+// Design tokens (UI only). Built around the app's deep-teal header colour
+// (#054465) and the orange (#FF9F1C) that the seek bar already used.
+// ---------------------------------------------------------------------------
+const UI = {
+  ink: "#061E2B", // deepest tone, used for icons on the accent colour
+  surface: "#0B3047", // self-contained dark cards
+  surfaceHi: "#124562", // artwork placeholder / raised surface
+  accent: "#FF9F1C",
+  accentSoft: "rgba(255,159,28,0.16)",
+  accentLine: "rgba(255,159,28,0.45)",
+  heart: "#FF4D67",
+  good: "#3DDC97",
+  glass: "rgba(255,255,255,0.12)",
+  hairline: "rgba(255,255,255,0.10)",
+  textHi: "#FFFFFF",
+  textMid: "rgba(255,255,255,0.72)",
+  textLow: "rgba(255,255,255,0.45)",
+  scrim: "rgba(4,24,35,0.62)",
+};
 
 // SongCard Component
 const SongCard = ({
@@ -65,6 +96,7 @@ const SongCard = ({
 }) => {
   return (
     <TouchableOpacity
+      activeOpacity={0.8}
       onPress={() => onPlayPress(section, song, index)}
       style={styles.cardContainer}
     >
@@ -77,18 +109,18 @@ const SongCard = ({
       <Text numberOfLines={1} style={styles.title}>
         {song.title?.slice(0, 30) || song?.name}
       </Text>
-      {song?.author ? (
-        <Text numberOfLines={1} style={[styles.artist, { color: "#000" }]}>
+      {/* {song?.author ? (
+        <Text numberOfLines={1} style={styles.artist}>
           {song.author?.slice(0, 30)}
         </Text>
       ) : (
         song?.type === "Public" &&
         section === "custom_playlists" && (
-          <Text numberOfLines={1} style={[styles.artist, { color: "#000" }]}>
+          <Text numberOfLines={1} style={styles.artist}>
             {"Arun"}
           </Text>
         )
-      )}
+      )} */}
       <View style={styles.iconContainer}></View>
     </TouchableOpacity>
   );
@@ -130,8 +162,12 @@ const SongsList = ({
 // QuickAccessButton Component
 const QuickAccessButton = ({ title, iconName, onPress }) => {
   return (
-    <TouchableOpacity style={styles.quickAccessButton} onPress={onPress}>
-      <Feather name={iconName} size={28} color="white" />
+    <TouchableOpacity
+      activeOpacity={0.85}
+      style={styles.quickAccessButton}
+      onPress={onPress}
+    >
+      <Feather name={iconName} size={24} color={UI.accent} />
       <Text style={styles.quickAccessText}>{title}</Text>
     </TouchableOpacity>
   );
@@ -159,23 +195,20 @@ const MusicSections = ({ data, onPlayPress, onLikePress }) => {
     <FlatList
       data={Object.entries(data)}
       keyExtractor={([key]) => key.toString()}
-      renderItem={({ item, index }) => {
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: hp(24) }}
+      renderItem={({ item }) => {
         const [key, songs] = item;
-        return key !== "charts" &&
-          key !== "moods_and_moments" &&
-          key !== "genres" ? (
+        // Decide by what the items are, not by the section's name: names
+        // change on every fetch. Charts, moods and genres are skipped because
+        // their items are not songs, albums or playlists.
+        return getSectionType(songs) !== ITEM_TYPES.UNKNOWN ? (
           <Section
             title={formatTitle(key)}
             songs={songs}
             onPlayPress={onPlayPress}
             onLikePress={onLikePress}
-            section={
-              index !== 1
-                ? key
-                : index === 1 && key.includes("album")
-                  ? "album"
-                  : "playlist"
-            }
+            section={key}
           />
         ) : null;
       }}
@@ -188,8 +221,9 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
     useSong();
   const [modalVisible, setModalVisible] = useState(false);
   const { userInfo } = useUser();
-  const { currentIndex, setCurrentIndex } = usePlayer();
+  const { currentIndex, setCurrentIndex, setCurrentQueue } = usePlayer();
   const [selectedTrack, setSelectedTrack] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
   const flatListRef = useRef(null);
   const [fullScreen, setFullScreen] = useState(false);
 
@@ -251,7 +285,7 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
       const itemId = item?.videoId?.toString() || item?.id?.toString();
       const { titleAnim, artistAnim } = initializeAnimations(itemId);
       const widths = textWidths[itemId] || {};
-      const containerWidth = width - 180; // Adjust based on layout (image, padding, icons, etc.)
+      const containerWidth = QUEUE_TEXT_WIDTH;
       startMarquee(titleAnim, widths.title || 0, containerWidth);
       startMarquee(artistAnim, widths.artist || 0, containerWidth);
     });
@@ -331,6 +365,46 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
 
   const close = () => setModalVisible(false);
 
+  // Drag & drop re-ordering: update the app queue, then mirror the move in the
+  // TrackPlayer queue. Tracks are matched by id (not by position) so the move
+  // stays correct even if the two lists ever differ.
+  const handleDragEnd = async ({ data, from, to }) => {
+    setIsDragging(false);
+    if (from === to) return;
+
+    const previousQueue = queue;
+    setCurrentQueue(data);
+
+    try {
+      const trackId = (song) => (song?.videoId || song?.id)?.toString();
+      const rntpQueue = await TrackPlayer.getQueue();
+
+      const fromIdx = rntpQueue.findIndex(
+        (t) => t.id?.toString() === trackId(data[to]),
+      );
+      if (fromIdx === -1) throw new Error("Moved track not found in player");
+
+      // The moved track must end up right after the track that now precedes it
+      let toIdx = 0;
+      if (to > 0) {
+        const prevIdx = rntpQueue.findIndex(
+          (t) => t.id?.toString() === trackId(data[to - 1]),
+        );
+        if (prevIdx === -1) throw new Error("Neighbour track not found");
+        toIdx = fromIdx < prevIdx ? prevIdx : prevIdx + 1;
+      }
+
+      if (fromIdx !== toIdx) await TrackPlayer.move(fromIdx, toIdx);
+
+      const activeIndex = await TrackPlayer.getActiveTrackIndex();
+      if (activeIndex !== undefined) setCurrentIndex(activeIndex);
+    } catch (error) {
+      console.error("Error moving track:", error);
+      setCurrentQueue(previousQueue); // roll the list back
+      showToast("Couldn't move the song", 3000);
+    }
+  };
+
   return (
     // <ImageBackground
     //   source={require("@/assets/images/background.jpg")}
@@ -340,13 +414,14 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
     <BottomModal
       // onTouchOutside={() => console.log("Touched Outside")}
       visible={isVisible}
+      modalStyle={{ backgroundColor: "transparent" }}
       style={{
         width: width,
         height: fullScreen ? height : height * 0.5,
-        // backgroundColor: "transparent",
+        backgroundColor: "transparent",
       }}
       overlayBackgroundColor="transparent"
-      swipeDirection={["down"]}
+      swipeDirection={isDragging ? [] : ["down"]}
       swipeThreshold={1000}
       onSwipeRelease={({ swipeDirection }) => {
         swipeDirection === "down"
@@ -359,119 +434,163 @@ const QueueModal = ({ isVisible, onClose, queue }) => {
       <ModalContent
         style={{
           height: height * 0.5,
-          paddingTop: 20,
-          padding: 10,
+          paddingTop: 12,
+          padding: 14,
+          backgroundColor: UI.surface,
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
           // backgroundColor: "transparent",
         }}
       >
+        <View style={styles.handle} />
         <View style={styles.queueHeader}>
-          <Text style={styles.title}>Current Queue</Text>
+          <Text style={styles.queueTitle}>Current Queue</Text>
         </View>
 
-        <FlatList
-          ref={flatListRef}
-          initialScrollIndex={currentIndex}
-          data={queue}
-          maxToRenderPerBatch={10}
-          getItemLayout={(data, index) => ({
-            length: 60,
-            offset: 60 * index,
-            index,
-          })}
-          keyExtractor={(item) =>
-            item?.videoId?.toString() || item?.id?.toString()
-          }
-          renderItem={({ item, index }) => {
-            const itemId = item?.videoId?.toString() || item?.id?.toString();
-            const { titleAnim, artistAnim } = initializeAnimations(itemId);
-            const containerWidth = width - 180; // Adjust based on layout
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <DraggableFlatList
+            ref={flatListRef}
+            containerStyle={{ flex: 1 }}
+            initialScrollIndex={Math.min(
+              currentIndex ?? 0,
+              Math.max(queue.length - 1, 0),
+            )}
+            data={queue}
+            maxToRenderPerBatch={10}
+            showsVerticalScrollIndicator={false}
+            getItemLayout={(data, index) => ({
+              length: QUEUE_ROW_HEIGHT + QUEUE_ROW_GAP,
+              offset: (QUEUE_ROW_HEIGHT + QUEUE_ROW_GAP) * index,
+              index,
+            })}
+            keyExtractor={(item) =>
+              item?.videoId?.toString() || item?.id?.toString()
+            }
+            onDragBegin={() => setIsDragging(true)}
+            onRelease={() => setIsDragging(false)}
+            onDragEnd={handleDragEnd}
+            renderItem={({ item, getIndex, drag, isActive }) => {
+              const index = getIndex();
+              const itemId = item?.videoId?.toString() || item?.id?.toString();
+              const { titleAnim, artistAnim } = initializeAnimations(itemId);
+              const containerWidth = QUEUE_TEXT_WIDTH;
+              const isCurrent =
+                (currentSong?.id || currentSong?.videoId) ===
+                (item.id || item.videoId);
 
-            return (
-              <TouchableOpacity
-                onPress={async () => {
-                  await TrackPlayer.skip(index);
-                }}
-                style={styles.songItem}
-              >
-                <Image
-                  source={{
-                    uri:
-                      item.thumbnail?.url ||
-                      item.thumbnail ||
-                      item.artwork ||
-                      "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
-                  }}
-                  style={{
-                    height: 50,
-                    width: 50,
-                    padding: 10,
-                    borderRadius: 10,
-                  }}
-                />
-                <View style={{ flexDirection: "column", flex: 1 }}>
-                  <View style={{ overflow: "hidden", width: containerWidth }}>
-                    <Animated.View
-                      style={{
-                        transform: [
-                          {
-                            translateX:
-                              (currentSong?.id || currentSong?.videoId) ===
-                              (item.id || item.videoId)
-                                ? artistAnim
-                                : 0,
-                          },
-                        ],
+              return (
+                <ScaleDecorator activeScale={1.03}>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    disabled={isActive}
+                    onLongPress={drag}
+                    delayLongPress={200}
+                    onPress={async () => {
+                      await TrackPlayer.skip(index);
+                    }}
+                    style={[
+                      styles.songItem,
+                      isCurrent && styles.songItemActive,
+                      isActive && styles.songItemDragging,
+                    ]}
+                  >
+                    <Image
+                      source={{
+                        uri:
+                          item.thumbnail?.url ||
+                          item.thumbnail ||
+                          item.artwork ||
+                          "https://res.cloudinary.com/dhlr0ufcb/image/upload/v1742872099/icon_ebgvfw.png",
                       }}
-                    >
-                      <Text
-                        style={[styles.songTitle, { color: "black" }]}
-                        numberOfLines={1}
-                        onLayout={(e) => handleTextLayout(itemId, "title", e)}
+                      style={styles.queueImage}
+                    />
+                    <View style={{ flexDirection: "column", flex: 1 }}>
+                      <View
+                        style={{ overflow: "hidden", width: containerWidth }}
                       >
-                        {item.title || "Unknown Title"}
-                      </Text>
-                    </Animated.View>
-                  </View>
-                  <View style={{ overflow: "hidden", width: containerWidth }}>
-                    <Animated.View
-                      style={{
-                        transform: [
-                          {
-                            translateX:
-                              (currentSong?.id || currentSong?.videoId) ===
-                              (item.id || item.videoId)
-                                ? artistAnim
-                                : 0,
-                          },
-                        ],
-                      }}
-                    >
-                      <Text
-                        style={styles.artist}
-                        numberOfLines={1}
-                        onLayout={(e) => handleTextLayout(itemId, "artist", e)}
+                        <Animated.View
+                          style={{
+                            transform: [
+                              {
+                                translateX: isCurrent ? titleAnim : 0,
+                              },
+                            ],
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.songTitle,
+                              isCurrent && styles.songTitleActive,
+                            ]}
+                            numberOfLines={1}
+                            onLayout={(e) =>
+                              handleTextLayout(itemId, "title", e)
+                            }
+                          >
+                            {item.title || "Unknown Title"}
+                          </Text>
+                        </Animated.View>
+                      </View>
+                      <View
+                        style={{ overflow: "hidden", width: containerWidth }}
                       >
-                        {item.author || "Unknown Artist"}
-                      </Text>
-                    </Animated.View>
-                  </View>
-                </View>
+                        <Animated.View
+                          style={{
+                            transform: [
+                              {
+                                translateX: isCurrent ? artistAnim : 0,
+                              },
+                            ],
+                          }}
+                        >
+                          <Text
+                            style={styles.artist}
+                            numberOfLines={1}
+                            onLayout={(e) =>
+                              handleTextLayout(itemId, "artist", e)
+                            }
+                          >
+                            {item.author || "Unknown Artist"}
+                          </Text>
+                        </Animated.View>
+                      </View>
+                    </View>
 
-                <TouchableOpacity
-                  onPress={() => {
-                    setModalVisible(true);
-                    setCurrentIndex(index);
-                    setSelectedTrack(item);
-                  }}
-                  style={{ position: "absolute", top: 20, right: 10 }}
-                >
-                  <Entypo name="dots-three-vertical" size={24} color="#fff" />
-                </TouchableOpacity>
-              </TouchableOpacity>
-            );
-          }}
-          contentContainerStyle={{ paddingBottom: 20 }}
-        />
+                    {/* Drag handle: press and drag to re-order */}
+                    <TouchableOpacity
+                      onPressIn={drag}
+                      hitSlop={{ top: 12, bottom: 12, left: 10, right: 10 }}
+                      style={styles.dragHandle}
+                    >
+                      <MaterialIcons
+                        name="drag-handle"
+                        size={24}
+                        color={isActive ? UI.accent : UI.textLow}
+                      />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => {
+                        setModalVisible(true);
+                        setCurrentIndex(index);
+                        setSelectedTrack(item);
+                      }}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      style={{ position: "absolute", top: 22, right: 12 }}
+                    >
+                      <Entypo
+                        name="dots-three-vertical"
+                        size={20}
+                        color={UI.textMid}
+                      />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                </ScaleDecorator>
+              );
+            }}
+            contentContainerStyle={{ paddingBottom: 20 }}
+          />
+        </GestureHandlerRootView>
       </ModalContent>
       <SongOptionsModal
         isVisible={modalVisible}
@@ -650,6 +769,15 @@ const NowPlayingScreen = React.memo(
       updateService();
     }, [updateService]);
 
+    // Keep the local index in step when the queue is re-ordered (drag & drop)
+    useEffect(() => {
+      const idx = currentQueue.findIndex(
+        (s) =>
+          (s.videoId || s.id) === (currentSong?.videoId || currentSong?.id),
+      );
+      if (idx !== -1) setCurrentIndex(idx);
+    }, [currentQueue]);
+
     const playPause = useCallback(async () => {
       try {
         if (playbackState.state === State.Playing) {
@@ -764,6 +892,8 @@ const NowPlayingScreen = React.memo(
     return (
       <BottomModal
         visible={isVisible}
+        modalStyle={{ backgroundColor: "transparent" }}
+        style={{ backgroundColor: "transparent" }}
         modalAnimation={new SlideAnimation({ slideFrom: "bottom" })}
         swipeDirection={["down"]}
         swipeThreshold={1000}
@@ -791,17 +921,21 @@ const NowPlayingScreen = React.memo(
           style={{
             height: fullScreen ? height + hp(100) : hp(800),
             paddingTop: 50,
-            padding: 10,
+            padding: 20,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            overflow: "hidden",
           }}
           blurRadius={10}
           resizeMode="cover"
         >
-          <Text
-            style={[
-              styles.header,
-              { fontSize: 14, marginBottom: 10, backfaceVisibility: "visible" },
-            ]}
-          >{`Playing From ${playingFrom}`}</Text>
+          {/* Dark wash so text stays readable on any artwork */}
+          <View pointerEvents="none" style={styles.scrim} />
+          <View pointerEvents="none" style={styles.handleWrap}>
+            <View style={styles.handle} />
+          </View>
+
+          <Text style={styles.playingFrom}>{`Playing From ${playingFrom}`}</Text>
 
           <Text style={styles.header}>Vibe - Now Playing</Text>
           <Image
@@ -838,29 +972,21 @@ const NowPlayingScreen = React.memo(
             </Animated.View>
           </View>
           {playingFrom !== "Local" && (
-            <View
-              style={[styles.nowPlayingControls, { paddingHorizontal: 10 }]}
-            >
+            <View style={[styles.nowPlayingControls, styles.actionRow]}>
               <TouchableOpacity
-                style={[
-                  styles.shareButton,
-                  { margin: 10, alignItems: "center" },
-                ]}
+                style={styles.actionButton}
                 onPress={() => shareSong(currentSong)}
               >
-                <AntDesign name="sharealt" size={24} color="#fff" />
+                <AntDesign name="sharealt" size={22} color={UI.textHi} />
               </TouchableOpacity>
-              <View style={styles.nowPlayingControls}>
+              <View style={styles.actionGroup}>
                 <TouchableOpacity
                   disabled={
                     (isDownloading || isDownloaded) &&
                     (currentDownload?.id || currentDownload?.videoId) ===
-                      (currentSong?.id || currentSong?.videoId)
+                    (currentSong?.id || currentSong?.videoId)
                   }
-                  style={[
-                    styles.shareButton,
-                    { margin: 10, alignItems: "center" },
-                  ]}
+                  style={styles.actionButton}
                   onPress={async () => {
                     setIsDownloading(true);
                     await downloadAndSaveSong(
@@ -874,36 +1000,28 @@ const NowPlayingScreen = React.memo(
                   }}
                 >
                   {isDownloading &&
-                  (currentDownload?.id || currentDownload?.videoId) ===
+                    (currentDownload?.id || currentDownload?.videoId) ===
                     (currentSong?.id || currentSong?.videoId) ? (
-                    <View
-                      style={{
-                        alignItems: "center",
-                        padding: 8,
-                        borderRadius: 50,
-                        borderWidth: 0.5,
-                        borderColor: "white",
-                      }}
-                    >
-                      <Text style={{ fontSize: 12, color: "white" }}>
+                    <View style={styles.downloadProgress}>
+                      <Text style={styles.downloadProgressText}>
                         {downloadProgress}%
                       </Text>
                     </View>
                   ) : downloaded.find(
-                      (s) => s.id === (currentSong.id || currentSong.videoId),
-                    ) ? (
+                    (s) => s.id === (currentSong.id || currentSong.videoId),
+                  ) ? (
                     <FontAwesome
                       name="check-circle"
-                      size={25}
-                      color={"green"}
+                      size={24}
+                      color={UI.good}
                       style={{ alignSelf: "center" }}
                     />
                   ) : (
-                    <Feather name="download" size={24} color="#fff" />
+                    <Feather name="download" size={22} color={UI.textHi} />
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.miniPlayerIcon}
+                  style={styles.actionButton}
                   onPress={async () =>
                     await handleLike(userInfo, setFavorites, currentSong)
                   }
@@ -913,9 +1031,13 @@ const NowPlayingScreen = React.memo(
                       (item.videoId || item?.id) ===
                       (currentSong?.videoId || currentSong.id),
                   ) ? (
-                    <Ionicons name="heart" size={24} color="#FF4D67" />
+                    <Ionicons name="heart" size={24} color={UI.heart} />
                   ) : (
-                    <Ionicons name="heart-outline" size={24} color="#fff" />
+                    <Ionicons
+                      name="heart-outline"
+                      size={24}
+                      color={UI.textHi}
+                    />
                   )}
                 </TouchableOpacity>
               </View>
@@ -928,9 +1050,9 @@ const NowPlayingScreen = React.memo(
               minimumValue={0}
               maximumValue={duration || 1}
               value={position}
-              minimumTrackTintColor="#FF9F1C"
-              maximumTrackTintColor="#FFFFFF"
-              thumbTintColor="#FF9F1C"
+              minimumTrackTintColor={UI.accent}
+              maximumTrackTintColor="rgba(255,255,255,0.28)"
+              thumbTintColor={UI.accent}
               tapToSeek={true}
               onValueChange={seekTo}
               onSlidingComplete={seekTo}
@@ -938,39 +1060,41 @@ const NowPlayingScreen = React.memo(
             />
             <Text style={styles.timeText}>{formatTime(duration)}</Text>
           </View>
-          <View style={styles.nowPlayingControls}>
+          <View style={[styles.nowPlayingControls, styles.transportRow]}>
             <TouchableOpacity onPress={toggleRepeat}>
               {repeat ? (
                 <MaterialIcons
                   name="repeat-one"
-                  size={32}
-                  color={COLORS.textPrimary}
+                  size={26}
+                  color={UI.accent}
                 />
               ) : (
                 <MaterialCommunityIcons
                   name="repeat"
-                  size={32}
-                  color={COLORS.textPrimary}
+                  size={26}
+                  color={UI.textMid}
                 />
               )}
             </TouchableOpacity>
             <TouchableOpacity onPress={playPrev} disabled={currentIndex <= 0}>
               <Ionicons
                 name="play-back"
-                size={32}
-                color={currentIndex <= 0 ? "#666" : COLORS.textPrimary}
+                size={34}
+                color={currentIndex <= 0 ? UI.textLow : UI.textHi}
               />
             </TouchableOpacity>
             {isSongLoading || playbackState.state === State.Buffering ? (
-              <ActivityIndicator size={32} color="white" />
+              <View style={styles.playButton}>
+                <ActivityIndicator size={32} color={UI.ink} />
+              </View>
             ) : (
-              <TouchableOpacity onPress={playPause}>
+              <TouchableOpacity onPress={playPause} style={styles.playButton}>
                 <Ionicons
                   name={
                     playbackState.state === State.Playing ? "pause" : "play"
                   }
-                  size={32}
-                  color={COLORS.textPrimary}
+                  size={34}
+                  color={UI.ink}
                 />
               </TouchableOpacity>
             )}
@@ -980,19 +1104,19 @@ const NowPlayingScreen = React.memo(
             >
               <Ionicons
                 name="play-forward"
-                size={32}
+                size={34}
                 color={
                   currentIndex + 1 >= currentQueue.length
-                    ? "#666"
-                    : COLORS.textPrimary
+                    ? UI.textLow
+                    : UI.textHi
                 }
               />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowQueue(true)}>
               <MaterialCommunityIcons
                 name="menu"
-                size={32}
-                color={COLORS.textPrimary}
+                size={26}
+                color={UI.textMid}
               />
             </TouchableOpacity>
           </View>
@@ -1006,18 +1130,7 @@ const NowPlayingScreen = React.memo(
                 justifyContent: "center",
               }}
             >
-              <Text
-                style={{
-                  color: "#fff",
-                  textAlign: "justify",
-                  borderWidth: 1,
-                  borderColor: "#fff",
-                  padding: sp(20),
-                  borderRadius: 10,
-                }}
-              >
-                No Lyrics Available
-              </Text>
+              <Text style={styles.lyricsEmpty}>No Lyrics Available</Text>
             </View>
           )}
         </ImageBackground>
@@ -1130,6 +1243,7 @@ const MiniPlayer = ({
 
   return (
     <TouchableOpacity
+      activeOpacity={0.9}
       onPress={() => onOpen(true)}
       style={[
         styles.miniPlayerContainer,
@@ -1156,6 +1270,7 @@ const MiniPlayer = ({
       <View
         style={{
           flexDirection: "row",
+          alignItems: "center",
           gap: wp(10),
           marginLeft: wp(10),
           flex: wp(0.3),
@@ -1172,19 +1287,21 @@ const MiniPlayer = ({
               (item.videoId || item.id) ===
               (currentSong.videoId || currentSong.id),
           ) ? (
-            <Ionicons name="heart" size={24} color={"#FF4D67"} />
+            <Ionicons name="heart" size={24} color={UI.heart} />
           ) : (
-            <Ionicons name="heart-outline" size={24} color={"#fff"} />
+            <Ionicons name="heart-outline" size={24} color={UI.textHi} />
           )}
         </TouchableOpacity>
         {isSongLoading || playbackState.state === State.Buffering ? (
-          <ActivityIndicator size={24} color="white" />
+          <View style={styles.miniPlayButton}>
+            <ActivityIndicator size={24} color={UI.ink} />
+          </View>
         ) : (
-          <TouchableOpacity onPress={playPause}>
+          <TouchableOpacity onPress={playPause} style={styles.miniPlayButton}>
             <Ionicons
               name={playbackState.state === State.Playing ? "pause" : "play"}
-              size={24}
-              color="white"
+              size={22}
+              color={UI.ink}
             />
           </TouchableOpacity>
         )}
@@ -1324,9 +1441,8 @@ const TrackComponent = ({
 
       const track = {
         id: item.videoId || item.id,
-        url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
-          item.videoId || item.id
-        }&email=${userInfo?.email || ""}`,
+        url: `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${item.videoId || item.id
+          }&email=${userInfo?.email || ""}`,
         title: item.title || "Unknown Title",
         artist: item.author || "Unknown Artist",
         artwork:
@@ -1352,8 +1468,7 @@ const TrackComponent = ({
         id: s.videoId || s.id,
         url:
           s.uri ||
-          `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${
-            s.videoId || s.id
+          `${process.env.EXPO_PUBLIC_API}/api/play?videoId=${s.videoId || s.id
           }&email=${userInfo?.email || ""}`,
         title: s.title || s.filename || "Unknown Title",
         artist: s.author || s.artist || "Unknown Artist",
@@ -1394,8 +1509,13 @@ const TrackComponent = ({
     }
   };
 
+  // Presentation only: is this row the track that is currently loaded?
+  const isCurrent =
+    (currentSong?.videoId || currentSong?.id) === (item?.videoId || item?.id);
+
   return (
     <TouchableOpacity
+      activeOpacity={0.85}
       onLongPress={() => {
         setIsModalOpen(true);
         setSelectedTrack(item);
@@ -1403,8 +1523,8 @@ const TrackComponent = ({
       pressRetentionOffset={{ bottom: 10 }}
       delayLongPress={100}
       onPress={play}
-      style={styles.trackItem}
-      // key={index}
+      style={[styles.trackItem, isCurrent && styles.trackItemActive]}
+    // key={index}
     >
       <View style={{ flexDirection: "row", flex: 0.8 }}>
         <Image
@@ -1423,7 +1543,7 @@ const TrackComponent = ({
               overflow: "hidden",
               width:
                 (currentSong?.id || currentSong?.videoId) ===
-                (item.videoId || item.id)
+                  (item.videoId || item.id)
                   ? containerWidth
                   : "100%",
             }}
@@ -1434,7 +1554,7 @@ const TrackComponent = ({
                   {
                     translateX:
                       (currentSong?.id || currentSong?.videoId) ===
-                      (item.videoId || item.id)
+                        (item.videoId || item.id)
                         ? titleAnim
                         : 0,
                   },
@@ -1443,7 +1563,7 @@ const TrackComponent = ({
             >
               <Text
                 numberOfLines={1}
-                style={styles.trackTitle}
+                style={[styles.trackTitle, isCurrent && styles.trackTitleActive]}
                 onLayout={handleTitleLayout}
               >
                 {item.title || item.filename || "Unknown Title"}
@@ -1457,7 +1577,7 @@ const TrackComponent = ({
                   {
                     translateX:
                       (currentSong?.id || currentSong?.videoId) ===
-                      (item.videoId || item.id)
+                        (item.videoId || item.id)
                         ? artistAnim
                         : 0,
                   },
@@ -1477,10 +1597,10 @@ const TrackComponent = ({
       </View>
       {(currentSong?.videoId || currentSong?.id) ===
         (item?.videoId || item?.id) && (
-        <Animated.View style={{ transform: [{ rotate: spin }] }}>
-          <FontAwesome5 name="compact-disc" size={24} color={"#ffff"} />
-        </Animated.View>
-      )}
+          <Animated.View style={{ transform: [{ rotate: spin }] }}>
+            <FontAwesome5 name="compact-disc" size={24} color={UI.accent} />
+          </Animated.View>
+        )}
       {playingFrom !== "Local" && (
         <TouchableOpacity
           onPress={() => handleLike(userInfo, setFavorites, item)} // Pass item instead of currentSong
@@ -1489,9 +1609,9 @@ const TrackComponent = ({
           {favorites.find(
             (song) => (song.videoId || song.id) === (item.videoId || item.id),
           ) ? (
-            <Ionicons name="heart" size={24} color={"#FF4D67"} />
+            <Ionicons name="heart" size={24} color={UI.heart} />
           ) : (
-            <Ionicons name="heart-outline" size={24} color={"#fff"} />
+            <Ionicons name="heart-outline" size={24} color={UI.textHi} />
           )}
         </TouchableOpacity>
       )}
@@ -1500,33 +1620,41 @@ const TrackComponent = ({
 };
 
 const styles = StyleSheet.create({
+  // -------------------------------------------------------------------------
+  // Home: cards and sections
+  // -------------------------------------------------------------------------
   cardContainer: {
     flexDirection: "column",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: sp(4),
-    width: wp(120),
-    // height: hp(240),
-    marginHorizontal: sp(4),
+    width: wp(124),
+    marginHorizontal: sp(6),
   },
 
   image: {
-    width: wp(120),
+    width: wp(124),
     aspectRatio: 1,
-    borderRadius: sp(12),
-    backgroundColor: COLORS.surfaceAlt,
+    borderRadius: sp(16),
+    backgroundColor: UI.surfaceHi,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: UI.hairline,
   },
 
   title: {
     fontSize: fs(14),
-    fontWeight: "600",
-    color: "#000",
-    textAlign: "center",
+    fontWeight: "700",
+    color: UI.textHi,
+    textAlign: "left",
+    width: "100%",
+    letterSpacing: 0.1,
+    marginTop: hp(2),
   },
 
   artist: {
-    fontSize: fs(14),
-    color: "#000",
+    fontSize: fs(12.5),
+    color: UI.textMid,
     textAlign: "left",
+    width: "100%",
   },
 
   iconContainer: {
@@ -1539,26 +1667,30 @@ const styles = StyleSheet.create({
   },
 
   listContainer: {
-    padding: sp(5),
-    backgroundColor: "lightgray",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.border,
+    paddingHorizontal: sp(8),
+    paddingTop: sp(6),
+    backgroundColor: UI.surface,
+    borderRadius: sp(22),
+    marginHorizontal: sp(8),
+    overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: UI.hairline,
     shadowColor: "#000",
-    shadowOffset: 4,
-    shadowRadius: 5,
-    opacity: 0.8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 5,
   },
 
   listTitle: {
     fontSize: fs(18),
     fontWeight: "700",
-    color: "#000",
+    color: UI.textHi,
     marginBottom: hp(1),
   },
 
   container: {
-    height: hp(180),
+    height: hp(196),
     paddingVertical: hp(10),
   },
 
@@ -1566,36 +1698,154 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.surfaceAlt,
-    padding: sp(14),
-    borderRadius: sp(10),
+    paddingVertical: sp(14),
+    paddingHorizontal: sp(18),
+    borderRadius: sp(16),
     marginVertical: hp(8),
-    minWidth: wp(160),
-    alignSelf: "center",
+    flex: 1,
+    minWidth: wp(140),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: UI.hairline,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
   },
 
   quickAccessText: {
     color: COLORS.textPrimary,
     fontSize: fs(14),
-    marginLeft: sp(10),
+    fontWeight: "600",
+    marginLeft: sp(12),
   },
 
   sectionContainer: {
-    padding: sp(3),
+    paddingVertical: sp(3),
+    marginBottom: hp(10),
   },
 
   sectionTitle: {
-    color: "#000",
-    fontSize: fs(16),
-    fontWeight: "700",
-    margin: hp(4),
+    color: UI.textHi,
+    fontSize: fs(19),
+    fontWeight: "800",
+    letterSpacing: -0.3,
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+    marginHorizontal: sp(18),
+    marginTop: hp(8),
+    marginBottom: hp(8),
   },
 
+  // -------------------------------------------------------------------------
+  // Now Playing
+  // -------------------------------------------------------------------------
   fullScreenContainer: {
     width: wp(360),
     height: hp(800),
     backgroundColor: COLORS.background,
     padding: sp(15),
     alignItems: "center",
+  },
+
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: UI.scrim,
+  },
+
+  handleWrap: {
+    position: "absolute",
+    top: 12,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+
+  handle: {
+    alignSelf: "center",
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.35)",
+    marginBottom: 10,
+  },
+
+  playingFrom: {
+    color: UI.textMid,
+    fontSize: fs(12),
+    letterSpacing: 0.3,
+    textAlign: "center",
+    marginBottom: hp(4),
+  },
+
+  header: {
+    color: UI.textHi,
+    fontSize: fs(16),
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: hp(18),
+  },
+
+  nowPlayingImage: {
+    width: wp(240),
+    aspectRatio: 1,
+    borderRadius: sp(24),
+    marginBottom: hp(22),
+    alignSelf: "center",
+    backgroundColor: UI.surfaceHi,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.45,
+    shadowRadius: 22,
+    // elevation: 14,
+  },
+
+  nowPlayingTitle: {
+    color: UI.textHi,
+    fontSize: fs(22),
+    fontWeight: "800",
+    letterSpacing: -0.3,
+    textAlign: "center",
+    marginBottom: hp(4),
+  },
+
+  nowPlayingArtist: {
+    color: UI.textMid,
+    fontSize: fs(15),
+    textAlign: "center",
+    marginBottom: hp(15),
+  },
+
+  actionRow: {
+    paddingHorizontal: sp(4),
+    marginBottom: hp(6),
+  },
+
+  actionGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: sp(10),
+  },
+
+  actionButton: {
+    width: sp(44),
+    height: sp(44),
+    borderRadius: sp(22),
+    backgroundColor: UI.glass,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  downloadProgress: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  downloadProgressText: {
+    fontSize: fs(11),
+    fontWeight: "700",
+    color: UI.textHi,
   },
 
   shareButton: {
@@ -1610,37 +1860,6 @@ const styles = StyleSheet.create({
     fontSize: fs(14),
   },
 
-  header: {
-    color: COLORS.textPrimary,
-    fontSize: fs(18),
-    fontWeight: "800",
-    textAlign: "center",
-    marginBottom: hp(18),
-  },
-
-  nowPlayingImage: {
-    width: wp(220),
-    aspectRatio: 1,
-    borderRadius: sp(16),
-    marginBottom: hp(20),
-    alignSelf: "center",
-  },
-
-  nowPlayingTitle: {
-    color: COLORS.textPrimary,
-    fontSize: fs(20),
-    fontWeight: "700",
-    textAlign: "center",
-    marginBottom: hp(4),
-  },
-
-  nowPlayingArtist: {
-    color: COLORS.textSecondary,
-    fontSize: fs(15),
-    textAlign: "center",
-    marginBottom: hp(15),
-  },
-
   sliderContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -1653,7 +1872,7 @@ const styles = StyleSheet.create({
   },
 
   timeText: {
-    color: COLORS.textMuted,
+    color: UI.textMid,
     fontSize: fs(12),
     width: wp(42),
     textAlign: "center",
@@ -1666,46 +1885,97 @@ const styles = StyleSheet.create({
     paddingHorizontal: sp(18),
   },
 
+  transportRow: {
+    paddingHorizontal: sp(4),
+  },
+
+  playButton: {
+    width: sp(72),
+    height: sp(72),
+    borderRadius: sp(36),
+    backgroundColor: UI.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: UI.accent,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+
+  lyricsEmpty: {
+    color: UI.textMid,
+    textAlign: "center",
+    borderWidth: 1,
+    borderColor: UI.hairline,
+    backgroundColor: UI.glass,
+    paddingVertical: sp(16),
+    paddingHorizontal: sp(24),
+    borderRadius: sp(16),
+    overflow: "hidden",
+  },
+
+  // -------------------------------------------------------------------------
+  // Mini player
+  // -------------------------------------------------------------------------
   miniPlayerContainer: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.surface,
     padding: sp(10),
-    borderRadius: sp(14),
+    borderRadius: sp(20),
     position: "absolute",
     left: sp(10),
     right: sp(10),
-    bottom: hp(5),
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    bottom: hp(10),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: UI.hairline,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 12,
   },
 
   miniPlayerImage: {
-    width: wp(45),
+    width: wp(46),
     aspectRatio: 1,
-    borderRadius: sp(10),
+    borderRadius: sp(12),
   },
 
   miniPlayerInfo: {
-    flex: 1,
-    marginLeft: sp(10),
+    flex: 0.8,
+    marginLeft: sp(12),
   },
 
   miniPlayerTitle: {
     color: COLORS.textPrimary,
     fontSize: fs(15),
-    fontWeight: "600",
+    fontWeight: "700",
   },
 
   miniPlayerArtist: {
     color: COLORS.textSecondary,
-    fontSize: fs(13),
+    fontSize: fs(12.5),
+    marginTop: hp(1),
   },
 
   miniPlayerIcon: {
     marginLeft: sp(6),
   },
 
+  miniPlayButton: {
+    width: sp(38),
+    height: sp(38),
+    borderRadius: sp(19),
+    backgroundColor: UI.accent,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // -------------------------------------------------------------------------
+  // Queue
+  // -------------------------------------------------------------------------
   modalContainer: {
     height: hp(420),
     backgroundColor: COLORS.surface,
@@ -1714,46 +1984,103 @@ const styles = StyleSheet.create({
   },
 
   queueHeader: {
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    paddingBottom: hp(10),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: UI.hairline,
+    paddingBottom: hp(12),
+    marginBottom: hp(6),
+  },
+
+  queueTitle: {
+    fontSize: fs(18),
+    fontWeight: "800",
+    letterSpacing: -0.2,
+    color: UI.textHi,
+  },
+
+  queueImage: {
+    height: 50,
+    width: 50,
+    borderRadius: 12,
+    backgroundColor: UI.surfaceHi,
   },
 
   songItem: {
-    paddingVertical: hp(10),
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    height: QUEUE_ROW_HEIGHT,
+    paddingHorizontal: sp(10),
+    marginBottom: QUEUE_ROW_GAP,
+    borderRadius: sp(14),
     flexDirection: "row",
     alignItems: "center",
-    gap: sp(10),
-    paddingHorizontal: sp(10),
+    gap: sp(12),
+  },
+
+  songItemDragging: {
+    backgroundColor: UI.surfaceHi,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: UI.accentLine,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+
+  dragHandle: {
+    position: "absolute",
+    top: 20,
+    right: 44,
+  },
+
+  songItemActive: {
+    backgroundColor: UI.accentSoft,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: UI.accentLine,
   },
 
   songTitle: {
     fontSize: fs(15),
-    color: COLORS.textPrimary,
+    fontWeight: "600",
+    color: UI.textHi,
   },
 
+  songTitleActive: {
+    color: UI.accent,
+  },
+
+  // -------------------------------------------------------------------------
+  // Track rows (lists elsewhere in the app)
+  // -------------------------------------------------------------------------
   trackItem: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.surfaceAlt,
-    padding: sp(12),
-    borderRadius: sp(12),
-    marginBottom: hp(6),
+    padding: sp(10),
+    borderRadius: sp(16),
+    marginBottom: hp(8),
     justifyContent: "space-between",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: UI.hairline,
+  },
+
+  trackItemActive: {
+    backgroundColor: UI.accentSoft,
+    borderColor: UI.accentLine,
   },
 
   trackImage: {
     width: wp(50),
     aspectRatio: 1,
-    borderRadius: sp(8),
+    borderRadius: sp(12),
   },
 
   trackTitle: {
     fontSize: fs(15),
     color: COLORS.textPrimary,
-    fontWeight: "500",
+    fontWeight: "600",
+  },
+
+  trackTitleActive: {
+    color: UI.accent,
   },
 
   trackArtist: {

@@ -2,6 +2,7 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
+import { View } from "react-native";
 import "react-native-reanimated";
 
 import { SongProvider } from "@/context/SongContext";
@@ -10,6 +11,7 @@ import RootLayoutNav from "./RootLayoutNav"; // Move navigation logic to a separ
 import { PlaylistProvider } from "@/context/Playlist";
 import { TrackPlayerServiceProvider } from "@/context/TrackPlayerConext";
 import { UserProvider } from "@/context/User";
+import AnimatedSplash, { SPLASH_BG } from "@/components/AnimatedSplash";
 
 export { ErrorBoundary } from "expo-router";
 
@@ -17,7 +19,8 @@ export const unstable_settings = {
   initialRouteName: "(tabs)",
 };
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
+// Keep the native splash up until the animated splash below has been drawn
+// (AnimatedSplash hides it itself, so there is no blank flash in between).
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -26,43 +29,34 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
-  const [isAppReady, setIsAppReady] = useState(false);
+  // Stays true until the animated splash has finished its exit animation
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     if (error) throw error;
   }, [error]);
 
-  useEffect(() => {
-    async function prepare() {
-      await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait for 3 seconds
-      setIsAppReady(true);
-    }
-
-    prepare();
-  }, []);
-
-  useEffect(() => {
-    if (loaded && isAppReady) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded, isAppReady]);
-
-  // Block rendering until fonts are loaded AND timeout is complete
-  if (!loaded || !isAppReady) {
-    return null;
-  }
-
   return (
-    <UserProvider>
-      <TrackPlayerServiceProvider>
-        <PlaylistProvider>
-          <PlayerProvider>
-            <SongProvider>
-              <RootLayoutNav />
-            </SongProvider>
-          </PlayerProvider>
-        </PlaylistProvider>
-      </TrackPlayerServiceProvider>
-    </UserProvider>
+    <View style={{ flex: 1, backgroundColor: SPLASH_BG }}>
+      {/* The app mounts as soon as fonts are ready, so it loads its data
+          behind the splash while the animation plays. */}
+      {loaded && (
+        <UserProvider>
+          <TrackPlayerServiceProvider>
+            <PlaylistProvider>
+              <PlayerProvider>
+                <SongProvider>
+                  <RootLayoutNav />
+                </SongProvider>
+              </PlayerProvider>
+            </PlaylistProvider>
+          </TrackPlayerServiceProvider>
+        </UserProvider>
+      )}
+
+      {showSplash && (
+        <AnimatedSplash ready={loaded} onFinish={() => setShowSplash(false)} />
+      )}
+    </View>
   );
 }

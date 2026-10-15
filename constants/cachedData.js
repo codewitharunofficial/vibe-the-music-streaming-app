@@ -6,32 +6,55 @@ import { handleLiked } from "./liked";
 import { Alert, NativeModules } from "react-native";
 import { showToast } from "./utils";
 
-export const saveToRecentlyPlayed = async (song) => {
-  console.log(song);
-  try {
-    const list = JSON.parse(await AsyncStorage.getItem("recents")) || [];
-    const ifExist = list.find((item) => item.videoId === song?.videoId);
-    if (!ifExist) {
-      list.push(song);
-      await AsyncStorage.setItem("recents", JSON.stringify(list));
-    } else {
-      const itemIndex = list.findIndex(
-        (item) => item.videoId === song?.videoId
-      );
-      list.splice(itemIndex, 1);
-      list.push(song);
-      await AsyncStorage.setItem("recents", JSON.stringify(list));
-    }
-  } catch (error) {
-    console.log(error);
-  }
+const MAX_RECENTS = 50;
+
+// Songs come from different sources (API results use `videoId`, TrackPlayer
+// tracks use `id`), so every comparison goes through one helper.
+const songKey = (song) => song?.videoId || song?.id;
+
+// Serialises read-modify-write access to "recents" so two quick calls
+// (e.g. track change + play) can't overwrite each other's update.
+let recentsLock = Promise.resolve();
+const runExclusive = (task) => {
+  const result = recentsLock.then(task, task);
+  recentsLock = result.catch(() => { });
+  return result;
 };
 
+const readList = async (storageKey) => {
+  const raw = await AsyncStorage.getItem(storageKey);
+  const parsed = raw ? JSON.parse(raw) : [];
+  return Array.isArray(parsed) ? parsed : [];
+};
+
+/* ------------------------------ Recents ------------------------------ */
+
+// Newest song is stored last.
+export const saveToRecentlyPlayed = (song) =>
+  runExclusive(async () => {
+    try {
+      const key = songKey(song);
+      if (!key) return;
+
+      const list = await readList("recents");
+      const next = list.filter((item) => songKey(item) !== key);
+      next.push(song);
+
+      await AsyncStorage.setItem(
+        "recents",
+        JSON.stringify(next.slice(-MAX_RECENTS))
+      );
+    } catch (error) {
+      console.log(error);
+    }
+  });
+
+// Returns the 20 most recent songs, newest first.
 export const getRecentlyPlayed = async (setIsLoading, setSongs) => {
   try {
     setIsLoading(true);
-    const list = JSON.parse(await AsyncStorage.getItem("recents")) || [];
-    setSongs(list.slice(0, 20));
+    const list = await readList("recents");
+    setSongs(list.slice(-20).reverse());
     setIsLoading(false);
   } catch (error) {
     console.log(error);
@@ -39,32 +62,35 @@ export const getRecentlyPlayed = async (setIsLoading, setSongs) => {
   }
 };
 
-export const mergeRecents = async (remoteRecents) => {
-  try {
-    console.log("Remote Recents: ", remoteRecents);
+export const mergeRecents = (remoteRecents) =>
+  runExclusive(async () => {
+    try {
+      const localRecents = await readList("recents");
+      const validRemoteRecents = Array.isArray(remoteRecents)
+        ? remoteRecents
+        : [];
 
-    const localData = await AsyncStorage.getItem("recents");
-    const localRecents = localData ? JSON.parse(localData) : [];
+      // Dedupe by song key; a repeated song moves to the end (most recent).
+      const merged = new Map();
+      [...localRecents, ...validRemoteRecents].forEach((item) => {
+        const key = songKey(item);
+        if (!key) return;
+        merged.delete(key);
+        merged.set(key, item);
+      });
 
-    const validRemoteRecents = Array.isArray(remoteRecents)
-      ? remoteRecents
-      : [];
+      const uniqueRecents = Array.from(merged.values()).slice(-MAX_RECENTS);
+      await AsyncStorage.setItem("recents", JSON.stringify(uniqueRecents));
 
-    // Merge and remove duplicates efficiently using Map
-    const mergedRecents = [...localRecents, ...validRemoteRecents];
-    const uniqueRecents = Array.from(
-      new Map(mergedRecents.map((item) => [item.id, item])).values()
-    );
+      console.log("Recents merged successfully:", uniqueRecents.length);
+      return uniqueRecents;
+    } catch (error) {
+      console.error("Error merging recents:", error);
+      return [];
+    }
+  });
 
-    await AsyncStorage.setItem("recents", JSON.stringify(uniqueRecents));
-
-    console.log("Recents merged successfully", uniqueRecents);
-    return uniqueRecents;
-  } catch (error) {
-    console.error("Error merging recents:", error);
-    return [];
-  }
-};
+/* ---------------------------- Favourites ----------------------------- */
 
 export const saveToFavourites = async (favourites) => {
   try {
@@ -76,9 +102,7 @@ export const saveToFavourites = async (favourites) => {
 
 export const getFavourites = async () => {
   try {
-    const raw = await AsyncStorage.getItem("favourites");
-    const list = raw ? JSON.parse(raw) : [];
-    return Array.isArray(list) ? list : [];
+    return await readList("favourites");
   } catch (error) {
     console.log("Error getting favourites:", error);
     return [];
@@ -86,107 +110,156 @@ export const getFavourites = async () => {
 };
 
 export const removeFromFavourites = async (song) => {
+  let list = [];
   try {
-    const list = JSON.parse(await AsyncStorage.getItem("favourites")) || [];
+    list = await getFavourites();
+    const key = songKey(song);
+    const next = list.filter((e) => songKey(e) !== key);
 
-    if (list.length > 0) {
-      const itemIndex = list.findIndex((e) => e.videoId === song.videoId);
-
-      if (itemIndex !== -1) {
-        list.splice(itemIndex, 1);
-
-        await AsyncStorage.setItem("favourites", JSON.stringify(list));
-        console.log("Updated favourites: ", list);
-      }
+    if (next.length !== list.length) {
+      await AsyncStorage.setItem("favourites", JSON.stringify(next));
+      console.log("Updated favourites: ", next);
     }
 
-    return list;
+    return next;
   } catch (error) {
     console.log("Error removing from favourites:", error);
+    return list;
   }
 };
 
 export const checkIfLoggedIn = async () => {
   try {
     const storedUser = await AsyncStorage.getItem("userInfo");
-    if (storedUser) {
-      return true;
-    } else {
-      return false;
-    }
+    return Boolean(storedUser);
   } catch (error) {
     console.error("Error Fetching user:", error);
+    return false;
   }
 };
+
+/* ----------------------------- Downloads ----------------------------- */
+
+// Song titles can contain characters that are illegal in file names.
+const sanitizeFileName = (name) =>
+  String(name || "")
+    .replace(/[\\/:*?"<>|#%]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
 
 export const downloadAndSaveSong = async (
   song,
   setProgress,
   setCurrentDownload
 ) => {
+  const id = song?.videoId || song?.id;
+  let fileUri = null;
+
   try {
-    const songUrl = await playASongs(song?.videoId || song?.id);
-
-    console.log("Downloading Song...", song);
-
     setCurrentDownload(song);
 
+    // Ask for permission first, so we don't fetch a URL we can't use.
     const { status } = await MediaLibrary.requestPermissionsAsync();
     if (status !== "granted") {
-      alert("Permission required to save songs offline.");
+      Alert.alert(
+        "Permission needed",
+        "Permission required to save songs offline."
+      );
       return null;
     }
 
-    // Define file path
-    const fileUri = `${FileSystem.cacheDirectory}${song.title}.mp3`;
-
-    if (songUrl) {
-      const downloadResumable = FileSystem.createDownloadResumable(
-        songUrl,
-        fileUri,
-        {},
-        (downloadProgress) => {
-          const progressPercentage = Math.round(
-            (downloadProgress.totalBytesWritten /
-              downloadProgress.totalBytesExpectedToWrite) *
-            100
-          );
-          setProgress(progressPercentage);
-        }
-      );
-      const { uri } = await downloadResumable.downloadAsync();
-      console.log("Downloaded to:", uri);
-
-      await MediaLibrary.saveToLibraryAsync(uri);
-
-      const existingSongs =
-        JSON.parse(await AsyncStorage.getItem("downloadedSongs")) || [];
-      const newSong = {
-        title: song.title,
-        author: song.artist || song.author,
-        thumbnail: song.thumbnail || song.artwork,
-        uri: uri,
-        id: song.videoId || song.id,
-      };
-      const newSongs = [...existingSongs, newSong];
-
-      await AsyncStorage.setItem("downloadedSongs", JSON.stringify(newSongs));
-      console.log("Song Downloaded and Saved");
-      setProgress(0);
-      setCurrentDownload(null);
-      return uri;
+    const songUrl = await playASongs(id);
+    if (!songUrl) {
+      showToast("Couldn't get this song's download link", 3000);
+      return null;
     }
+
+    console.log("Downloading Song...", song?.title);
+
+    // documentDirectory is kept by the OS; cacheDirectory can be wiped at any
+    // time, which would break offline playback of "downloaded" songs.
+    fileUri = `${FileSystem.documentDirectory}${sanitizeFileName(song?.title) || id
+      }.mp3`;
+
+    const downloadResumable = FileSystem.createDownloadResumable(
+      songUrl,
+      fileUri,
+      {},
+      (downloadProgress) => {
+        // Total size can be unknown (0 or -1) for chunked responses.
+        if (downloadProgress.totalBytesExpectedToWrite > 0) {
+          setProgress(
+            Math.round(
+              (downloadProgress.totalBytesWritten /
+                downloadProgress.totalBytesExpectedToWrite) *
+              100
+            )
+          );
+        }
+      }
+    );
+
+    const result = await downloadResumable.downloadAsync();
+    if (!result || (result.status && result.status >= 400)) {
+      throw new Error(`Download failed with status ${result?.status}`);
+    }
+    const { uri } = result;
+    console.log("Downloaded to:", uri);
+
+    await MediaLibrary.saveToLibraryAsync(uri);
+
+    const existingSongs = await readList("downloadedSongs");
+    const newSong = {
+      title: song.title,
+      author: song.artist || song.author,
+      thumbnail: song.thumbnail || song.artwork,
+      uri: uri,
+      id: id,
+    };
+    // Replace an earlier entry for the same song instead of duplicating it.
+    const newSongs = [...existingSongs.filter((s) => s.id !== id), newSong];
+
+    await AsyncStorage.setItem("downloadedSongs", JSON.stringify(newSongs));
+    console.log("Song Downloaded and Saved");
+    return uri;
   } catch (error) {
     console.error("Download error:", error);
+    if (fileUri) {
+      await FileSystem.deleteAsync(fileUri, { idempotent: true }).catch(
+        () => { }
+      );
+    }
     return null;
+  } finally {
+    // Always reset, so the UI never stays stuck in a "downloading" state.
+    setProgress(0);
+    setCurrentDownload(null);
   }
 };
 
+// Returns an array of {title, author, thumbnail, uri, id}.
+// Entries whose file no longer exists on the device are dropped.
 export const getDownloadedSongs = async () => {
   try {
-    const songs =
-      JSON.parse(await AsyncStorage.getItem("downloadedSongs")) || [];
-    return songs; // Returns an array of {title, author, thumbnail, uri}
+    const songs = await readList("downloadedSongs");
+
+    const exists = await Promise.all(
+      songs.map(async (s) => {
+        try {
+          const info = await FileSystem.getInfoAsync(s.uri);
+          return info.exists;
+        } catch {
+          return true; // can't tell, so keep it
+        }
+      })
+    );
+
+    const valid = songs.filter((_, i) => exists[i]);
+    if (valid.length !== songs.length) {
+      await AsyncStorage.setItem("downloadedSongs", JSON.stringify(valid));
+    }
+    return valid;
   } catch (error) {
     console.error("Error retrieving songs:", error);
     return [];
@@ -195,25 +268,17 @@ export const getDownloadedSongs = async () => {
 
 export const checkIfDownloaded = async (id) => {
   try {
-    console.log("Checking Song With: ", id);
-
     const songs = await getDownloadedSongs();
-
-    console.log("All Downloaded Songs: ", songs);
-
-    if (songs?.length > 0) {
-      const isDownloaded = songs.find((s) => s.id === id);
-      console.log("Found Song: ", isDownloaded);
-      if (isDownloaded) {
-        return true;
-      } else return false;
-    } else {
-      return false;
-    }
+    return songs.some((s) => s.id === id);
   } catch (error) {
     console.log(error);
+    return false;
   }
 };
+
+/* ------------------------------- Likes ------------------------------- */
+
+let likeInFlight = false;
 
 export const handleLike = async (userInfo, setFavorites, currentSong) => {
   if (!userInfo) {
@@ -221,37 +286,35 @@ export const handleLike = async (userInfo, setFavorites, currentSong) => {
     return;
   }
 
+  // Ignore taps while a like/unlike request is still running; two overlapping
+  // requests would toggle the song twice.
+  if (likeInFlight) return;
+  likeInFlight = true;
+
   try {
-    // Get current favorites from local storage (or empty array)
-    const currentFavourites = (await getFavourites()) || [];
-    const isLiked = currentFavourites.some(
-      (item) =>
-        (item?.videoId || item?.id) ===
-        (currentSong?.videoId || currentSong?.id)
-    );
+    const key = songKey(currentSong);
+    const currentFavourites = await getFavourites();
+    const wasLiked = currentFavourites.some((item) => songKey(item) === key);
 
-    console.log(isLiked);
-
-    // Show immediate toast for user feedback
+    // Immediate feedback while the request runs
     showToast(
-      isLiked ? "Removing from Favourites..." : "Adding to Favourites...",
+      wasLiked ? "Removing from Favourites..." : "Adding to Favourites...",
       3000
     );
 
-    // Call API to toggle like status on server
+    // Toggle on the server, which returns the full updated list
     const data = await handleLiked(userInfo.email, currentSong);
 
-    console.log(data);
-
-    if (data?.favourites) {
-      // Save updated favorites locally
+    if (Array.isArray(data?.favourites)) {
       await saveToFavourites(data.favourites);
-
-      // Update UI state
       setFavorites(data.favourites);
 
+      // Report what the server actually did, not what we expected
+      const isLikedNow = data.favourites.some(
+        (item) => songKey(item) === key
+      );
       showToast(
-        isLiked ? "Removed from Favourites" : "Added to Favourites",
+        isLikedNow ? "Added to Favourites" : "Removed from Favourites",
         3000
       );
     } else {
@@ -260,12 +323,19 @@ export const handleLike = async (userInfo, setFavorites, currentSong) => {
   } catch (error) {
     console.error("Error handling like:", error);
     showToast("Error updating favourites", 3000);
+  } finally {
+    likeInFlight = false;
   }
 };
+
+/* ----------------------------- Metadata ------------------------------ */
 
 const { AudioMetadata } = NativeModules;
 
 export const getMetadata = async (uri) => {
+  if (!AudioMetadata?.getAudioMetadata) {
+    throw new Error("AudioMetadata native module is not available");
+  }
   try {
     const metadata = await AudioMetadata.getAudioMetadata(uri);
     return metadata;

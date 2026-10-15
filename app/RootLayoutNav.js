@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Stack, useSegments } from "expo-router";
 import {
   SafeAreaView,
@@ -10,12 +10,6 @@ import {
   MiniPlayer,
   NowPlayingScreen,
 } from "@/components/Component";
-import { useColorScheme } from "@/components/useColorScheme";
-import {
-  ThemeProvider,
-  DarkTheme,
-  DefaultTheme,
-} from "@react-navigation/native";
 import TrackPlayer, { Capability, RepeatMode, AppKilledPlaybackBehavior } from "react-native-track-player";
 import { trackPlayerService } from "@/trackPlayerService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -25,6 +19,7 @@ import { addToRNTPQueue, moveSong } from "@/constants/queue";
 import { EvilIcons } from "@expo/vector-icons";
 import { fetchUserPlaylists } from "@/constants/apiCalls";
 import TrackOptionModal from "@/components/TrackOptions";
+import DeepLinkHandler from "@/components/DeepLinkHandler";
 
 export default function RootLayoutNav() {
   const {
@@ -40,6 +35,7 @@ export default function RootLayoutNav() {
 
   const route = useSegments();
   const { userInfo, setUserInfo } = useUser();
+  const [playerReady, setPlayerReady] = useState(false);   // add useState to the react import
 
 
 
@@ -61,6 +57,7 @@ export default function RootLayoutNav() {
     try {
       console.log("Setting up TrackPlayer...");
       await TrackPlayer.setupPlayer();
+      setPlayerReady(true);
       console.log("TrackPlayer setup complete");
 
       await TrackPlayer.updateOptions({
@@ -212,12 +209,13 @@ export default function RootLayoutNav() {
           name="local"
           options={{ headerShown: false, headerTitle: `Local-Songs`, headerTitleStyle: { color: "#fff" }, headerStyle: { backgroundColor: "#054465" } }}
         />
-         <Stack.Screen
+        <Stack.Screen
           name="about"
           options={{ headerShown: false, headerTitle: `About-Vibe`, headerTitleStyle: { color: "#fff" }, headerStyle: { backgroundColor: "#054465" } }}
         />
       </Stack>
       <ModalPortal />
+      <DeepLinkHandler ready={playerReady} />
 
       {/* Mini Player */}
       {currentSong && !open && route[0] === "(tabs)" ? (
